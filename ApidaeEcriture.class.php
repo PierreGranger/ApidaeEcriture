@@ -1,4 +1,6 @@
 <?php
+
+	namespace PierreGranger ;
 /*
 *
 * @author  Pierre Granger <pierre@pierre-granger.fr>
