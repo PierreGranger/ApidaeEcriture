@@ -1,0 +1,7 @@
+{
+    "name": "PierreGranger/ApidaeEcriture",
+    "description": "Classe de simplification pour l'écriture sur Apidae",
+    "require": {
+        "php": "^5.3.3 || ^7.0"
+    }
+}
