@@ -43,14 +43,14 @@
 			
 			if ( $this->debugTime ) $start = microtime(true) ;
 
-			if ( ! is_array($params) ) throw new Exception('$params is not an array') ;
+			if ( ! is_array($params) ) throw new \Exception('$params is not an array') ;
 
 			if ( isset($params['debug']) && $params['debug'] == true ) $this->debug = $params['debug'] ; else $this->debug = false ;
 
 			if ( isset($params['type_prod']) && in_array($params['type_prod'],Array('prod','preprod')) ) $this->type_prod = $params['type_prod'] ;
 
-			if ( isset($params['projet_ecriture_clientId']) ) $this->projet_ecriture_clientId = $params['projet_ecriture_clientId'] ; else throw new Exception('missing projet_ecriture_clientId') ;
-			if ( isset($params['projet_ecriture_secret']) ) $this->projet_ecriture_secret = $params['projet_ecriture_secret'] ; else throw new Exception('missing projet_ecriture_secret') ;
+			if ( isset($params['projet_ecriture_clientId']) ) $this->projet_ecriture_clientId = $params['projet_ecriture_clientId'] ; else throw new \Exception('missing projet_ecriture_clientId') ;
+			if ( isset($params['projet_ecriture_secret']) ) $this->projet_ecriture_secret = $params['projet_ecriture_secret'] ; else throw new \Exception('missing projet_ecriture_secret') ;
 
 			if ( isset($params['skipValidation']) ) $this->skipValidation = ( $params['skipValidation'] ) ? true : false ;
 
@@ -71,13 +71,13 @@
 
 			if ( ! is_array($init_params) )
 			{
-				throw new Exception('enregistrer_params_not_array') ;
+				throw new \Exception('enregistrer_params_not_array') ;
 				return false ;
 			}
 
-			if ( ! isset($init_params['fieldlist']) ) throw new Exception('enregistrer_fieldlist_null') ;
-			if ( ! isset($init_params['root']) ) throw new Exception('enregistrer_root_null') ;
-			if ( ! isset($init_params['action']) || ! in_array($init_params['action'],self::$modes) ) throw new Exception('enregistrer_action_null') ;
+			if ( ! isset($init_params['fieldlist']) ) throw new \Exception('enregistrer_fieldlist_null') ;
+			if ( ! isset($init_params['root']) ) throw new \Exception('enregistrer_root_null') ;
+			if ( ! isset($init_params['action']) || ! in_array($init_params['action'],self::$modes) ) throw new \Exception('enregistrer_action_null') ;
 
 			$fieldlist = $init_params['fieldlist'] ;
 			$root = $init_params['root'] ;
@@ -96,7 +96,7 @@
 
 			if ( ! in_array($action,self::$modes) )
 			{
-				throw new Exception('Action '.$action.' invalide') ;	
+				throw new \Exception('Action '.$action.' invalide') ;	
 				return false ;
 			}
 			
@@ -133,15 +133,15 @@
 
 				if ( ! $token_ecriture )
 				{
-					throw new Exception('Impossible de récupérer le token d\'écriture pour '.$clientId) ;
+					throw new \Exception('Impossible de récupérer le token d\'écriture pour '.$clientId) ;
 				}
 
 				if ( ! isset($token_ecriture->access_token) )
 				{
-					throw new Exception('Le token d\'écriture n\'a pas pu être récupéré pour '.$clientId) ;	
+					throw new \Exception('Le token d\'écriture n\'a pas pu être récupéré pour '.$clientId) ;	
 				}
 			}
-			catch(Exception $e) {
+			catch(\Exception $e) {
 				$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
 				if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
 				return Array('errorCode'=>$e->getCode(),'message'=>$e->getMessage()) ;
@@ -164,13 +164,13 @@
 				
 				$result = curl_exec($ch);
 			
-				if (FALSE === $result) throw new Exception(curl_error($ch), curl_errno($ch));
+				if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
 				
 				$result = json_decode($result,true) ;
 				if ( isset($result['id']) )
 					$this->last_id = $result['id'] ;
 				
-			} catch(Exception $e) {
+			} catch(\Exception $e) {
 				$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
 				if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
 			}
@@ -191,7 +191,7 @@
 
 			if ( sizeof($ko) > 0 )
 			{
-				throw new Exception('erreurs_enregistrement <br />'.print_r($ko,true)) ;
+				throw new \Exception('erreurs_enregistrement <br />'.print_r($ko,true)) ;
 				return $ko ;
 			}
 			return true ;
@@ -249,15 +249,15 @@
 
 				if ( ! $token_ecriture )
 				{
-					throw new Exception('Impossible de récupérer le token d\'écriture') ;
+					throw new \Exception('Impossible de récupérer le token d\'écriture') ;
 				}
 
 				if ( ! isset($token_ecriture->access_token) )
 				{
-					throw new Exception('Le token d\'écriture n\'a pas pu être récupéré pour') ;	
+					throw new \Exception('Le token d\'écriture n\'a pas pu être récupéré pour') ;	
 				}
 			}
-			catch(Exception $e) {
+			catch(\Exception $e) {
 				$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
 				if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
 				return Array('errorCode'=>$e->getCode(),'message'=>$e->getMessage()) ;
@@ -277,7 +277,7 @@
 				
 				$result = curl_exec($ch);
 			
-				if (FALSE === $result) throw new Exception(curl_error($ch), curl_errno($ch));
+				if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
 				
 				$json_result = json_decode($result) ;
 				$is_json =  ( json_last_error() == JSON_ERROR_NONE ) ;
@@ -298,7 +298,7 @@
 
 				return true ;
 				
-			} catch(Exception $e) {
+			} catch(\Exception $e) {
 
 				trigger_error(sprintf(
 					'Curl failed with error #%d: %s',
@@ -326,9 +326,9 @@
 			try {
 				$token = curl_exec($ch);
 
-				if ( $token === false ) throw new Exception(curl_error($ch), curl_errno($ch));
+				if ( $token === false ) throw new \Exception(curl_error($ch), curl_errno($ch));
 				else return json_decode($token) ;
-			} catch(Exception $e) {
+			} catch(\Exception $e) {
 				trigger_error(sprintf('Curl failed with error #%d: %s', $e->getCode(), $e->getMessage()), E_USER_ERROR);
 				return false ;
 			}
