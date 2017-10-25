@@ -4,7 +4,7 @@
 /*
 *
 * @author  Pierre Granger <pierre@pierre-granger.fr>
-*
+* @version    0.1.5
 *
 */
 
