@@ -10,17 +10,17 @@
 
 	class ApidaeEcriture {
 
-		private static $url_api = Array(
+		protected static $url_api = Array(
 			'preprod' => 'http://api.sitra2-vm-preprod.accelance.net/',
 			'prod' => 'http://api.apidae-tourisme.com/'
 		) ;
 
-		private static $url_base = Array(
+		protected static $url_base = Array(
 				'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
 				'prod' => 'https://base.apidae-tourisme.com/'
 		) ;
 
-		private $type_prod = 'prod' ;
+		protected $type_prod = 'prod' ;
 
 		public $skipValidation = 'false' ;
 
@@ -28,16 +28,16 @@
 
 		public $statuts_api_ecriture = Array('CREATION_VALIDATION_SKIPPED','CREATION_VALIDATION_ASKED','MODIFICATION_VALIDATION_SKIPPED','MODIFICATION_VALIDATION_ASKED','MODIFICATION_NO_DIFF','DEMANDE_SUPPRESSION_SENT','NO_ACTION') ;
 
-		private static $modes = Array('CREATION','MODIFICATION','DEMANDE_SUPPRESSION') ;
+		protected static $modes = Array('CREATION','MODIFICATION','DEMANDE_SUPPRESSION') ;
 
-		private $_config ;
+		protected $_config ;
 
 		public $debugTime = false ;
 
 		public $last_id = null ;
 
-		private $projet_ecriture_clientId ;
-		private $projet_ecriture_secret ;
+		protected $projet_ecriture_clientId ;
+		protected $projet_ecriture_secret ;
 
 		public function __construct($params=null) {
 			
@@ -348,7 +348,7 @@
 		}
 
 		// https://stackoverflow.com/questions/6041741/fastest-way-to-check-if-a-string-is-json-in-php
-		private function isJson($string) {
+		protected function isJson($string) {
 			json_decode($string);
 			return (json_last_error() == JSON_ERROR_NONE);
 		}
