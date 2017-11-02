@@ -363,8 +363,12 @@
 			if ( isset($mailto) && $mailto != null && filter_var($mailto, FILTER_VALIDATE_EMAIL) )
 				$to = $mailto ;
 
+			$reflect = new \ReflectionClass($this) ;
+			
+			$className = $reflect->getShortName() ;
+
 			$endline = "\n" ;
-			$h1 = strip_tags(get_class($this).' - '.$sujet) ;
+			$h1 = strip_tags($className.' - '.$sujet) ;
 			$sujet = $h1 ;
 			
 			if ( is_array($msg) )
