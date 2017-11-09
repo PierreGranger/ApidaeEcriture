@@ -217,7 +217,7 @@
 			$params['action'] = 'DEMANDE_SUPPRESSION' ;
 			return $this->enregistrer($params);
 		}
-
+		
 		public function enregistrerDonneesPrivees($idFiche,$cle,$valeur,$lng='fr')
 		{
 			$donneesPrivees = Array('objetsTouristiques'=>Array()) ;
@@ -308,7 +308,7 @@
 			}
 		}
 
-		function gimme_token($clientId=null,$secret=null)
+		public function gimme_token($clientId=null,$secret=null)
 		{
 			$clientId = ( $clientId != null ) ? $clientId : $this->projet_ecriture_clientId ;
 			$secret = ( $secret != null ) ? $secret : $this->projet_ecriture_secret ;
@@ -325,15 +325,16 @@
 			
 			try {
 				$token = curl_exec($ch);
+				$token_json = json_decode($token) ;
 
 				if ( $token === false ) throw new \Exception(curl_error($ch), curl_errno($ch));
-				else return json_decode($token) ;
+				elseif ( $token === '' ) throw new \Exception(curl_error($ch), curl_errno($ch));
+				elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception(curl_error($ch), curl_errno($ch));
+				else return $token_json ;
 			} catch(\Exception $e) {
-				trigger_error(sprintf('Curl failed with error #%d: %s', $e->getCode(), $e->getMessage()), E_USER_ERROR);
+				//trigger_error(sprintf('Curl failed with error #%d: %s', $e->getCode(), $e->getMessage()), E_USER_ERROR);
 				return false ;
 			}
-			
-			return false ;
 		}
 
 		public function debug($var,$titre=null)
