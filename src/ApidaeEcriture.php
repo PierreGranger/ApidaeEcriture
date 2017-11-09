@@ -16,8 +16,8 @@
 		) ;
 
 		protected static $url_base = Array(
-			'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
-			'prod' => 'https://base.apidae-tourisme.com/'
+				'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
+				'prod' => 'https://base.apidae-tourisme.com/'
 		) ;
 
 		protected $type_prod = 'prod' ;
@@ -326,9 +326,14 @@
 			try {
 				$response = curl_exec($ch);
 
-				$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-				$header = substr($response, 0, $header_size);
-				$body = substr($response, $header_size);
+				if ( $this->debug )
+				{
+					$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+					$header = substr($response, 0, $header_size);
+					$body = substr($response, $header_size);
+				}
+				else
+					$body = $response ;
 
 				$token_json = json_decode($body) ;
 
