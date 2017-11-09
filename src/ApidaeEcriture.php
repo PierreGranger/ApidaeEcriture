@@ -12,12 +12,12 @@
 
 		protected static $url_api = Array(
 			'preprod' => 'http://api.sitra2-vm-preprod.accelance.net/',
-			'prod' => 'http://api.apidae-tourisme.com/'
+			'prod' => 'https://api.apidae-tourisme.com/'
 		) ;
 
 		protected static $url_base = Array(
-				'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
-				'prod' => 'https://base.apidae-tourisme.com/'
+			'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
+			'prod' => 'https://base.apidae-tourisme.com/'
 		) ;
 
 		protected $type_prod = 'prod' ;
@@ -316,7 +316,7 @@
 			$ch = curl_init() ;
 			// http://stackoverflow.com/questions/15729167/paypal-api-with-php-and-curl
 			curl_setopt($ch,CURLOPT_URL, $this->url_api().'oauth/token');
-			curl_setopt($ch, CURLOPT_HEADER, false);
+			curl_setopt($ch, CURLOPT_HEADER, $this->debug);
 			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
@@ -324,15 +324,25 @@
 			curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
 			
 			try {
-				$token = curl_exec($ch);
-				$token_json = json_decode($token) ;
+				$response = curl_exec($ch);
 
-				if ( $token === false ) throw new \Exception(curl_error($ch), curl_errno($ch));
-				elseif ( $token === '' ) throw new \Exception(curl_error($ch), curl_errno($ch));
-				elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception(curl_error($ch), curl_errno($ch));
+				$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+				$header = substr($response, 0, $header_size);
+				$body = substr($response, $header_size);
+
+				$token_json = json_decode($body) ;
+
+				if ( curl_errno($ch) !== 0 ) throw new \Exception(curl_error($ch), curl_errno($ch));
+				elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception('gimme_token : le retour de curl n\'est pas une chaîne json valide');
 				else return $token_json ;
 			} catch(\Exception $e) {
-				//trigger_error(sprintf('Curl failed with error #%d: %s', $e->getCode(), $e->getMessage()), E_USER_ERROR);
+				if ( $this->debug )
+				{
+					echo '<pre>'.print_r($header,true).'</pre>' ;
+					echo '<pre>'.print_r($body,true).'</pre>' ;
+					echo '<pre>'.print_r($e->getCode(),true).'</pre>' ;
+					echo '<pre>'.print_r($e->getMessage(),true).'</pre>' ;
+				}
 				return false ;
 			}
 		}
