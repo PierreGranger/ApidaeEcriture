@@ -324,7 +324,6 @@
 				    'ssoSecret'      => $secret
 				]);
 
-				echo '<pre>' ;
 				return $client->getSsoTokenCredential() ;
 			}
 			elseif ( $method == 'file_get_contents' )
@@ -353,7 +352,7 @@
 				$retour = file_get_contents($this->url_api().'oauth/token',false,$context) ;
 				if ( ! $retour )
 				{
-					if ( $this->config )
+					if ( $this->debug )
 					{
 						$error = error_get_last() ;
 						echo '<pre>'.print_r($error,true).'</pre>' ;
