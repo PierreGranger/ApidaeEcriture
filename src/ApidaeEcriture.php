@@ -125,19 +125,12 @@
 			$this->debug($params,'$params') ;
 
 			try {
-				$token_ecriture = null ;
+				$access_token = $this->gimme_token($clientId,$secret) ;
+				$this->debug($access_token,'$access_token') ;
 
-				$token_ecriture = $this->gimme_token($clientId,$secret) ;
-				$this->debug($token_ecriture,'$token_ecriture') ;
-
-				if ( ! $token_ecriture )
+				if ( ! $access_token )
 				{
-					throw new \Exception('Impossible de récupérer le token d\'écriture pour '.$clientId) ;
-				}
-
-				if ( ! isset($token_ecriture->access_token) )
-				{
-					throw new \Exception('Le token d\'écriture n\'a pas pu être récupéré pour '.$clientId) ;	
+					throw new \Exception(__LINE__.'Impossible de récupérer le token d\'écriture') ;
 				}
 			}
 			catch(\Exception $e) {
@@ -146,35 +139,42 @@
 				return Array('errorCode'=>$e->getCode(),'message'=>$e->getMessage()) ;
 			}
 			
-			try {
+			$method = 'curl' ;
+
+			if ( $method == 'curl' )
+			{
+
+				try {
+					
+					$ch = curl_init();
+					
+					curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/ecriture/');
+					
+					$header = Array() ;
+					$header[] = "Authorization: Bearer ".$access_token ;
+					curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+					curl_setopt($ch,CURLOPT_POSTFIELDS, ($params));
+					curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+					// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/oauth/authentification-avec-un-token-oauth2
+					curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+					curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
+					
+					$result = curl_exec($ch);
 				
-				$ch = curl_init();
+					if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
+					
+					$result = json_decode($result,true) ;
+					if ( isset($result['id']) )
+						$this->last_id = $result['id'] ;
+					
+				} catch(\Exception $e) {
+					$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
+					if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
+				}
 				
-				curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/ecriture/');
-				
-				$header = Array() ;
-				$header[] = "Authorization: Bearer ".$token_ecriture->access_token ;
-				curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-				curl_setopt($ch,CURLOPT_POSTFIELDS, ($params));
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-				// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/oauth/authentification-avec-un-token-oauth2
-				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-				curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
-				
-				$result = curl_exec($ch);
-			
-				if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
-				
-				$result = json_decode($result,true) ;
-				if ( isset($result['id']) )
-					$this->last_id = $result['id'] ;
-				
-			} catch(\Exception $e) {
-				$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
-				if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
+				curl_close($ch);
+
 			}
-			
-			curl_close($ch);
 
 			$this->debug($result,'$result') ;
 			
@@ -190,7 +190,6 @@
 
 			if ( sizeof($ko) > 0 )
 			{
-				throw new \Exception('erreurs_enregistrement <br />'.print_r($ko,true)) ;
 				return $ko ;
 			}
 			return true ;
@@ -241,19 +240,12 @@
 			$POSTFIELDS = Array('donneesPrivees'=>json_encode($donneesPrivees)) ;
 
 			try {
-				$token_ecriture = null ;
+				$access_token = $this->gimme_token() ;
+				$this->debug($access_token,'$access_token') ;
 
-				$token_ecriture = $this->gimme_token() ;
-				$this->debug($token_ecriture,'$token_ecriture') ;
-
-				if ( ! $token_ecriture )
+				if ( ! isset($access_token) )
 				{
-					throw new \Exception('Impossible de récupérer le token d\'écriture') ;
-				}
-
-				if ( ! isset($token_ecriture->access_token) )
-				{
-					throw new \Exception('Le token d\'écriture n\'a pas pu être récupéré pour') ;	
+					throw new \Exception(__LINE__.'Le token d\'écriture n\'a pas pu être récupéré') ;	
 				}
 			}
 			catch(\Exception $e) {
@@ -267,9 +259,9 @@
 				$ch = curl_init() ;
 				curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/donnees-privees/');
 				$header = Array() ;
-				$header[] = "Authorization: Bearer ".$token_ecriture->access_token ;
+				$header[] = "Authorization: Bearer ".$access_token ;
 				curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-				curl_setopt($ch,CURLOPT_POSTFIELDS, $POSTFIELDS);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $POSTFIELDS);
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
 				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
 				curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
@@ -314,19 +306,7 @@
 
 			$method = 'curl' ;
 
-			if ( class_exists('\Sitra\ApiClient\Client') )
-				$method = 'tractopelle' ;
-			
-			if ( $method == 'tractopelle' )
-			{
-				$client = new \Sitra\ApiClient\Client([
-				    'ssoClientId'    => $clientId,
-				    'ssoSecret'      => $secret
-				]);
-
-				return $client->getSsoTokenCredential() ;
-			}
-			elseif ( $method == 'file_get_contents' )
+			if ( $method == 'file_get_contents' )
 			{
 				// https://stackoverflow.com/a/2445332/2846837
 				// https://stackoverflow.com/a/14253379/2846837
@@ -363,7 +343,7 @@
 				$retour_json = json_encode($retour) ;
 				if ( json_last_error() !== JSON_ERROR_NONE ) return false ;
 
-				return $retour_json ;
+				return $retour_json->access_token ;
 			}
 			elseif ( $method == 'curl' )
 			{
@@ -397,7 +377,7 @@
 
 					if ( curl_errno($ch) !== 0 ) throw new \Exception(curl_error($ch), curl_errno($ch));
 					elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception('gimme_token : le retour de curl n\'est pas une chaîne json valide');
-					else return $token_json ;
+					else return $token_json->access_token ;
 				} catch(\Exception $e) {
 					if ( $this->debug )
 					{
