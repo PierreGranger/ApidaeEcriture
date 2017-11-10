@@ -141,7 +141,19 @@
 			
 			$method = 'curl' ;
 
-			if ( $method == 'curl' )
+			if ( class_exists('\Sitra\ApiClient\Client') && $this->debug )
+				$method = 'tractopelle' ;
+
+			if ( $method == 'tractopelle' )
+			{
+				$client = new \Sitra\ApiClient\Client([
+				    'ssoClientId'    => $clientId,
+				    'ssoSecret'      => $secret
+				]);
+				
+				$client->ecrire($params);
+			}
+			elseif ( $method == 'curl' )
 			{
 
 				try {
@@ -306,7 +318,20 @@
 
 			$method = 'curl' ;
 
-			if ( $method == 'file_get_contents' )
+			if ( class_exists('\Sitra\ApiClient\Client') && $this->debug )
+				$method = 'tractopelle' ;
+			
+			if ( $method == 'tractopelle' )
+			{
+				$client = new \Sitra\ApiClient\Client([
+				    'ssoClientId'    => $clientId,
+				    'ssoSecret'      => $secret
+				]);
+
+				$token = $client->getSsoTokenCredential() ;
+				return $token['access_token'] ;
+			}
+			elseif ( $method == 'file_get_contents' )
 			{
 				// https://stackoverflow.com/a/2445332/2846837
 				// https://stackoverflow.com/a/14253379/2846837
