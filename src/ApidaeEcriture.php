@@ -4,7 +4,6 @@
 /*
 *
 * @author  Pierre Granger <pierre@pierre-granger.fr>
-* @version    0.1.5
 *
 */
 
@@ -16,8 +15,8 @@
 		) ;
 
 		protected static $url_base = Array(
-				'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
-				'prod' => 'https://base.apidae-tourisme.com/'
+			'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
+			'prod' => 'https://base.apidae-tourisme.com/'
 		) ;
 
 		protected $type_prod = 'prod' ;
@@ -313,42 +312,106 @@
 			$clientId = ( $clientId != null ) ? $clientId : $this->projet_ecriture_clientId ;
 			$secret = ( $secret != null ) ? $secret : $this->projet_ecriture_secret ;
 
-			$ch = curl_init() ;
-			// http://stackoverflow.com/questions/15729167/paypal-api-with-php-and-curl
-			curl_setopt($ch,CURLOPT_URL, $this->url_api().'oauth/token');
-			curl_setopt($ch, CURLOPT_HEADER, $this->debug);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-			curl_setopt($ch, CURLOPT_USERPWD, $clientId.":".$secret);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
+			$method = 'curl' ;
+
+			if ( class_exists('\Sitra\ApiClient\Client') )
+				$method = 'tractopelle' ;
 			
-			try {
-				$response = curl_exec($ch);
+			if ( $method == 'tractopelle' )
+			{
+				$client = new \Sitra\ApiClient\Client([
+				    'ssoClientId'    => $clientId,
+				    'ssoSecret'      => $secret
+				]);
 
-				if ( $this->debug )
+				echo '<pre>' ;
+				return $client->getSsoTokenCredential() ;
+			}
+			elseif ( $method == 'file_get_contents' )
+			{
+				// https://stackoverflow.com/a/2445332/2846837
+				// https://stackoverflow.com/a/14253379/2846837
+
+				$postdata = http_build_query(
+					Array(
+						'grant_type' => 'client_credentials'
+					)
+				) ;
+
+				$opts = Array(
+					'http' => Array(
+						'method' => 'POST',
+						'header' => 'Accept: application/json'."\r\n" .
+									'Content-Type: application/x-www-form-urlencoded'."\r\n".
+									'Authorization: Basic '.base64_encode($clientId.':'.$secret)."\r\n",
+						'content' => $postdata
+					)
+				) ;
+
+				$context = stream_context_create($opts) ;
+
+				$retour = file_get_contents($this->url_api().'oauth/token',false,$context) ;
+				if ( ! $retour )
 				{
-					$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-					$header = substr($response, 0, $header_size);
-					$body = substr($response, $header_size);
+					if ( $this->config )
+					{
+						$error = error_get_last() ;
+						echo '<pre>'.print_r($error,true).'</pre>' ;
+					}
+					return false ;
 				}
-				else
-					$body = $response ;
 
-				$token_json = json_decode($body) ;
+				$retour_json = json_encode($retour) ;
+				if ( json_last_error() !== JSON_ERROR_NONE ) return false ;
 
-				if ( curl_errno($ch) !== 0 ) throw new \Exception(curl_error($ch), curl_errno($ch));
-				elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception('gimme_token : le retour de curl n\'est pas une chaîne json valide');
-				else return $token_json ;
-			} catch(\Exception $e) {
-				if ( $this->debug )
-				{
-					echo '<pre>'.print_r($header,true).'</pre>' ;
-					echo '<pre>'.print_r($body,true).'</pre>' ;
-					echo '<pre>'.print_r($e->getCode(),true).'</pre>' ;
-					echo '<pre>'.print_r($e->getMessage(),true).'</pre>' ;
+				return $retour_json ;
+			}
+			elseif ( $method == 'curl' )
+			{
+				$ch = curl_init() ;
+				// http://stackoverflow.com/questions/15729167/paypal-api-with-php-and-curl
+				curl_setopt($ch, CURLOPT_URL, $this->url_api().'oauth/token');
+				curl_setopt($ch, CURLOPT_HEADER, $this->debug);
+				curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				//curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+				//curl_setopt($ch, CURLOPT_SSLVERSION, 6);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+				curl_setopt($ch, CURLOPT_USERPWD, $clientId.":".$secret);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
+				curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+				curl_setopt($ch, CURLOPT_PORT,443);
+				
+				try {
+					$response = curl_exec($ch);
+
+					if ( $this->debug )
+					{
+						$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+						$header = substr($response, 0, $header_size);
+						$body = substr($response, $header_size);
+					}
+					else
+						$body = $response ;
+
+					$token_json = json_decode($body) ;
+
+					if ( curl_errno($ch) !== 0 ) throw new \Exception(curl_error($ch), curl_errno($ch));
+					elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception('gimme_token : le retour de curl n\'est pas une chaîne json valide');
+					else return $token_json ;
+				} catch(\Exception $e) {
+					if ( $this->debug )
+					{
+						echo '<pre>URL'."\n".$this->url_api().'oauth/token</pre>' ;
+						echo '<pre>CURL_GETINFO'."\n".print_r(curl_getinfo($ch),true).'</pre>' ;
+						echo '<pre>CURL_VERSION'."\n".print_r(curl_version(),true).'</pre>' ;
+						echo '<pre>HEADER'."\n".print_r($header,true).'</pre>' ;
+						echo '<pre>BODY'."\n".print_r($body,true).'</pre>' ;
+						echo '<pre>CODE'."\n".print_r($e->getCode(),true).'</pre>' ;
+						echo '<pre>MESSAGE'."\n".print_r($e->getMessage(),true).'</pre>' ;
+					}
+					return false ;
 				}
-				return false ;
 			}
 		}
 
