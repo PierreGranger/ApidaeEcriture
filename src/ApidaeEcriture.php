@@ -11,7 +11,7 @@
 
 		protected static $url_api = Array(
 			'preprod' => 'http://api.sitra2-vm-preprod.accelance.net/',
-			'prod' => 'https://api.apidae-tourisme.com/'
+			'prod' => 'http://api.apidae-tourisme.com/'
 		) ;
 
 		protected static $url_base = Array(
@@ -141,7 +141,19 @@
 			
 			$method = 'curl' ;
 
-			if ( $method == 'curl' )
+			if ( class_exists('\Sitra\ApiClient\Client') && $this->debug )
+				$method = 'tractopelle' ;
+
+			if ( $method == 'tractopelle' )
+			{
+				$client = new \Sitra\ApiClient\Client([
+				    'ssoClientId'    => $clientId,
+				    'ssoSecret'      => $secret
+				]);
+				
+				$client->ecrire($params);
+			}
+			elseif ( $method == 'curl' )
 			{
 
 				try {
@@ -306,7 +318,20 @@
 
 			$method = 'curl' ;
 
-			if ( $method == 'file_get_contents' )
+			if ( class_exists('\Sitra\ApiClient\Client') && $this->debug )
+				$method = 'tractopelle' ;
+			
+			if ( $method == 'tractopelle' )
+			{
+				$client = new \Sitra\ApiClient\Client([
+				    'ssoClientId'    => $clientId,
+				    'ssoSecret'      => $secret
+				]);
+
+				$token = $client->getSsoTokenCredential() ;
+				return $token['access_token'] ;
+			}
+			elseif ( $method == 'file_get_contents' )
 			{
 				// https://stackoverflow.com/a/2445332/2846837
 				// https://stackoverflow.com/a/14253379/2846837
@@ -351,16 +376,31 @@
 				// http://stackoverflow.com/questions/15729167/paypal-api-with-php-and-curl
 				curl_setopt($ch, CURLOPT_URL, $this->url_api().'oauth/token');
 				curl_setopt($ch, CURLOPT_HEADER, $this->debug);
+				curl_setopt($ch, CURLOPT_VERBOSE, true);
 				curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
 				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 				//curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 				//curl_setopt($ch, CURLOPT_SSLVERSION, 6);
 				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); 
 				curl_setopt($ch, CURLOPT_USERPWD, $clientId.":".$secret);
 				curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
 				curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-				curl_setopt($ch, CURLOPT_PORT,443);
 				
+		/*
+		$baseUrl = 'http://api.apidae-tourisme.com' ;
+		$url = $baseUrl.'/oauth/token' ;
+		$ch = curl_init() ;
+		curl_setopt($ch,CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_HEADER, true);
+		curl_setopt($ch, CURLOPT_VERBOSE, true);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); 
+		curl_setopt($ch, CURLOPT_USERPWD, $ssoClientId.":".$ssoSecret);
+		*/
+
 				try {
 					$response = curl_exec($ch);
 
@@ -375,8 +415,8 @@
 
 					$token_json = json_decode($body) ;
 
-					if ( curl_errno($ch) !== 0 ) throw new \Exception(curl_error($ch), curl_errno($ch));
-					elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception('gimme_token : le retour de curl n\'est pas une chaîne json valide');
+					if ( curl_errno($ch) !== 0 ) throw new \Exception(__LINE__.curl_error($ch), curl_errno($ch));
+					elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception(__LINE__.'gimme_token : le retour de curl n\'est pas une chaîne json valide');
 					else return $token_json->access_token ;
 				} catch(\Exception $e) {
 					if ( $this->debug )
