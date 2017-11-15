@@ -3,7 +3,7 @@
     "description": "Classe de simplification pour l'écriture sur Apidae",
     "require": {
         "php": "^5.3.3 || ^7.0",
-        "phpmailer/phpmailer": "^6.0"
+        "phpmailer/phpmailer": "^5.2"
     },
     "autoload": {
         "psr-4": {

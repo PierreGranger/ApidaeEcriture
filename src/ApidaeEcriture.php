@@ -451,15 +451,38 @@
 			return (json_last_error() == JSON_ERROR_NONE);
 		}
 
-		public function alerte($sujet,$msg,$mailto=null)
+		public function alerte($sujet,$msg,$mailto=null,$options=null)
 		{
-			if ( ! filter_var($this->_config['mail_admin'], FILTER_VALIDATE_EMAIL) ) return false ;
+			if ( is_array($this->_config['mail_admin']) )
+			{
+				foreach ( $this->_config['mail_admin'] as $mail_admin )
+				{
+					if ( ! filter_var($mail_admin, FILTER_VALIDATE_EMAIL) ) throw new \Exception(__LINE__.' mail admin incorrect : '.$mail_admin) ;
+					if ( ! isset($first_mail_admin) ) $first_mail_admin = $mail_admin ;
+				}
+				$mails_admin = $this->_config['mail_admin'] ;
+			}
+			else
+			{
+				if ( ! filter_var($this->_config['mail_admin'], FILTER_VALIDATE_EMAIL) ) throw new \Exception(__LINE__.' mail admin incorrect : '.$this->_config['mail_admin']) ;
+				$first_mail_admin = $this->_config['mail_admin'] ;
+				$mails_admin = Array($this->_config['mail_admin']) ;
+			}
 
-			$from = ( isset($this->_config['mail_expediteur']) && filter_var($this->_config['mail_expediteur'], FILTER_VALIDATE_EMAIL) ) ? $this->_config['mail_expediteur'] : $this->_config['mail_admin'] ;
-			$to = $this->_config['mail_admin'] ;
-
-			if ( isset($mailto) && $mailto != null && filter_var($mailto, FILTER_VALIDATE_EMAIL) )
-				$to = $mailto ;
+			$from = ( isset($this->_config['mail_expediteur']) && filter_var($this->_config['mail_expediteur'], FILTER_VALIDATE_EMAIL) ) ? $this->_config['mail_expediteur'] : $first_mail_admin ;
+			
+			if ( is_array($mailto) )
+			{
+				foreach ( $mailto as $mt )
+					if ( ! filter_var($mt, FILTER_VALIDATE_EMAIL) ) throw new \Exception(__LINE__.' mail to incorrect'.print_r($mt,true)) ;
+			}
+			elseif ( $mailto !== null )
+			{
+				if ( ! filter_var($mailto, FILTER_VALIDATE_EMAIL) ) throw new \Exception(__LINE__.' mail to incorrect'.print_r($mailto,true)) ;
+				$mailto = Array($mailto) ;
+			}
+			else
+				$mailto = $mails_admin ;
 
 			$reflect = new \ReflectionClass($this) ;
 			$className = $reflect->getShortName() ;
@@ -468,7 +491,7 @@
 			$h1 = strip_tags($className.' - '.$sujet) ;
 			$sujet = $h1 ;
 
-			$method = ( class_exists('\PHPMailer\PHPMailer\PHPMailer') ) ? 'phpmailer' : 'mail' ;
+			$method = ( class_exists('\PHPMailer') ) ? 'phpmailer' : 'mail' ;
 
 			if ( $this->debug ) $sujet .= ' ['.$method.']' ;
 
@@ -510,12 +533,17 @@
 			
 			if ( $method == 'phpmailer' )
 			{
-				$mail = new \PHPMailer\PHPMailer\PHPMailer();
+				$mail = new \PHPMailer();
 				try {
 				    $mail->setFrom($from) ;
-				    $mail->addAddress($to);
+				   	
+				   	foreach ( $mailto as $t )
+				    	$mail->addAddress($t) ;
+				    
+				    foreach ( $mails_admin as $mail_admin )
+				    	$mail->AddBCC($mail_admin) ;
 
-				    $mail->isHTML(true);                                  // Set email format to HTML
+				    $mail->isHTML(true);
 				    $mail->Subject = $sujet ;
 				    $mail->Body    = $message_html ;
 				    $mail->AltBody = $message_texte ;
@@ -523,10 +551,8 @@
 				    $mail->send();
 				    return true ;
 
-				} catch (\PHPMailer\PHPMailer\Exception $e) {
-				    echo 'Message could not be sent.';
-				    echo 'Mailer Error: ' . $mail->ErrorInfo;
-				    return false ;
+				} catch (Exception $e) {
+				    throw new \Exception($e) ;
 				}
 			}
 			else
@@ -534,8 +560,8 @@
 				$boundary = md5(time()) ;
 				
 				$entete = Array() ;
-				$entete['From'] = $from . '<'.$from.'>' ;
-				$entete['Bcc'] = $this->_config['mail_admin'] ;
+				$entete['From'] = $from ;
+				$entete['Bcc'] = implode(',',$mails_admin) ;
 				$entete['Date'] = @date("D, j M Y G:i:s O") ;
 				$entete['X-Mailer'] = 'PHP'.phpversion() ;
 				$entete['MIME-Version'] = '1.0' ;
@@ -558,15 +584,10 @@
 					$header .= $key . ' : ' . $value . $endline ;
 				}
 
-				if ( ! preg_match("#\r#i",$to) && ! preg_match("#\n\r#i",$to) && ! preg_match("#\r#i",$from) && ! preg_match("#\n\r#i",$from) )
-				{
-					$ret = @mail($to,$sujet,$message,$header) ;
-					if ( ! $ret )
-						echo 'Erreur : '.print_r(error_get_last(),true) ;
-				}
-				else
-					$ret = false ;	
-
+				$ret = @mail(implode(',',$mailto),$sujet,$message,$header) ;
+				if ( ! $ret )
+					throw new \Exception('Erreur : '.print_r(error_get_last(),true)) ;
+				
 				return $ret ;
 			}
 		}
