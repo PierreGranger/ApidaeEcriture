@@ -462,13 +462,16 @@
 				$to = $mailto ;
 
 			$reflect = new \ReflectionClass($this) ;
-			
 			$className = $reflect->getShortName() ;
 
 			$endline = "\n" ;
 			$h1 = strip_tags($className.' - '.$sujet) ;
 			$sujet = $h1 ;
-			
+
+			$method = ( class_exists('\PHPMailer\PHPMailer\PHPMailer') ) ? 'phpmailer' : 'mail' ;
+
+			if ( $this->debug ) $sujet .= ' ['.$method.']' ;
+
 			if ( is_array($msg) )
 			{
 				$new_msg = null ;
@@ -505,43 +508,67 @@
 			
 			$message_texte = strip_tags(nl2br($message_html)) ;
 			
-			$boundary = md5(time()) ;
-			
-			$entete = Array() ;
-			$entete['From'] = $from . '<'.$from.'>' ;
-			$entete['Bcc'] = $this->_config['mail_admin'] ;
-			$entete['Date'] = @date("D, j M Y G:i:s O") ;
-			$entete['X-Mailer'] = 'PHP'.phpversion() ;
-			$entete['MIME-Version'] = '1.0' ;
-			$entete['Content-Type'] = 'multipart/alternative; boundary="'.$boundary.'"' ;
-			
-			$message = $endline ;
-			$message .= $endline."--".$boundary.$endline ;
-			$message .= "Content-Type: text/plain; charset=\"utf-8\"".$endline ;
-			$message .= "Content-Transfer-Encoding: 8bit".$endline ;
-			$message .= $endline.strip_tags(nl2br($message_html)) ;
-			$message .= $endline.$endline."--".$boundary.$endline ;
-			$message .= "Content-Type: text/html; charset=\"utf-8\"".$endline ;
-			$message .= "Content-Transfer-Encoding: 8bit;".$endline ;
-			$message .= $endline.$message_html ;
-			$message .= $endline.$endline."--".$boundary."--";
-			
-			$header = null ;
-			foreach ( $entete as $key => $value )
+			if ( $method == 'phpmailer' )
 			{
-				$header .= $key . ' : ' . $value . $endline ;
-			}
+				$mail = new \PHPMailer\PHPMailer\PHPMailer();
+				try {
+				    $mail->setFrom($from) ;
+				    $mail->addAddress($to);
 
-			if ( ! preg_match("#\r#i",$to) && ! preg_match("#\n\r#i",$to) && ! preg_match("#\r#i",$from) && ! preg_match("#\n\r#i",$from) )
-			{
-				$ret = @mail($to,$sujet,$message,$header) ;
-				if ( ! $ret )
-					echo 'Erreur : '.print_r(error_get_last(),true) ;
+				    $mail->isHTML(true);                                  // Set email format to HTML
+				    $mail->Subject = $sujet ;
+				    $mail->Body    = $message_html ;
+				    $mail->AltBody = $message_texte ;
+
+				    $mail->send();
+				    return true ;
+
+				} catch (\PHPMailer\PHPMailer\Exception $e) {
+				    echo 'Message could not be sent.';
+				    echo 'Mailer Error: ' . $mail->ErrorInfo;
+				    return false ;
+				}
 			}
 			else
-				$ret = false ;
-			
-			return $ret ;
+			{
+				$boundary = md5(time()) ;
+				
+				$entete = Array() ;
+				$entete['From'] = $from . '<'.$from.'>' ;
+				$entete['Bcc'] = $this->_config['mail_admin'] ;
+				$entete['Date'] = @date("D, j M Y G:i:s O") ;
+				$entete['X-Mailer'] = 'PHP'.phpversion() ;
+				$entete['MIME-Version'] = '1.0' ;
+				$entete['Content-Type'] = 'multipart/alternative; boundary="'.$boundary.'"' ;
+				
+				$message = $endline ;
+				$message .= $endline."--".$boundary.$endline ;
+				$message .= "Content-Type: text/plain; charset=\"utf-8\"".$endline ;
+				$message .= "Content-Transfer-Encoding: 8bit".$endline ;
+				$message .= $endline.strip_tags(nl2br($message_html)) ;
+				$message .= $endline.$endline."--".$boundary.$endline ;
+				$message .= "Content-Type: text/html; charset=\"utf-8\"".$endline ;
+				$message .= "Content-Transfer-Encoding: 8bit;".$endline ;
+				$message .= $endline.$message_html ;
+				$message .= $endline.$endline."--".$boundary."--";
+				
+				$header = null ;
+				foreach ( $entete as $key => $value )
+				{
+					$header .= $key . ' : ' . $value . $endline ;
+				}
+
+				if ( ! preg_match("#\r#i",$to) && ! preg_match("#\n\r#i",$to) && ! preg_match("#\r#i",$from) && ! preg_match("#\n\r#i",$from) )
+				{
+					$ret = @mail($to,$sujet,$message,$header) ;
+					if ( ! $ret )
+						echo 'Erreur : '.print_r(error_get_last(),true) ;
+				}
+				else
+					$ret = false ;	
+
+				return $ret ;
+			}
 		}
 
 		// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/cas-particulier-des-multimedias

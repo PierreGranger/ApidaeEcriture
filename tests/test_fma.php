@@ -1,7 +1,7 @@
 <?php
 
-	include(realpath(dirname(__FILE__)).'/vendor/autoload.php') ;
-	include(realpath(dirname(__FILE__)).'/config.inc.php') ;
+	include(realpath(dirname(__FILE__)).'/../vendor/autoload.php') ;
+	include(realpath(dirname(__FILE__)).'/../config.inc.php') ;
 
 	$ae = new \PierreGranger\ApidaeEcriture(Array(
 		'type_prod' => 'preprod',
@@ -126,6 +126,6 @@
 		echo '</pre>' ;
 	}
 	
-	$ae->alerte('ApidaeEcriture test',$ko) ;
+	$ae->alerte(__FILE__,$ko) ;
 
 	print_r($ko) ;
