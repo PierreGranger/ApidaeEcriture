@@ -543,6 +543,7 @@
 				    foreach ( $mails_admin as $mail_admin )
 				    	$mail->AddBCC($mail_admin) ;
 
+				    $mail->CharSet = 'UTF-8' ;
 				    $mail->isHTML(true);
 				    $mail->Subject = $sujet ;
 				    $mail->Body    = $message_html ;
