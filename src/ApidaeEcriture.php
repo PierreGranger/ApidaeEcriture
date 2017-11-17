@@ -11,7 +11,7 @@
 
 		protected static $url_api = Array(
 			'preprod' => 'http://api.sitra2-vm-preprod.accelance.net/',
-			'prod' => 'http://api.apidae-tourisme.com/'
+			'prod' => 'https://api.apidae-tourisme.com/'
 		) ;
 
 		protected static $url_base = Array(
@@ -311,7 +311,7 @@
 			}
 		}
 
-		public function gimme_token($clientId=null,$secret=null)
+		public function gimme_token($clientId=null,$secret=null,$debugToken=false)
 		{
 			$clientId = ( $clientId != null ) ? $clientId : $this->projet_ecriture_clientId ;
 			$secret = ( $secret != null ) ? $secret : $this->projet_ecriture_secret ;
@@ -375,7 +375,7 @@
 				$ch = curl_init() ;
 				// http://stackoverflow.com/questions/15729167/paypal-api-with-php-and-curl
 				curl_setopt($ch, CURLOPT_URL, $this->url_api().'oauth/token');
-				curl_setopt($ch, CURLOPT_HEADER, $this->debug);
+				curl_setopt($ch, CURLOPT_HEADER, 1);
 				curl_setopt($ch, CURLOPT_VERBOSE, true);
 				curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
 				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -387,33 +387,24 @@
 				curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
 				curl_setopt($ch, CURLOPT_TIMEOUT, 4);
 				
-		/*
-		$baseUrl = 'http://api.apidae-tourisme.com' ;
-		$url = $baseUrl.'/oauth/token' ;
-		$ch = curl_init() ;
-		curl_setopt($ch,CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_HEADER, true);
-		curl_setopt($ch, CURLOPT_VERBOSE, true);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json'));
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); 
-		curl_setopt($ch, CURLOPT_USERPWD, $ssoClientId.":".$ssoSecret);
-		*/
-
 				try {
 					$response = curl_exec($ch);
 
-					if ( $this->debug )
-					{
-						$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-						$header = substr($response, 0, $header_size);
-						$body = substr($response, $header_size);
-					}
-					else
-						$body = $response ;
-
+					$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+					$header = substr($response, 0, $header_size);
+					$body = substr($response, $header_size);
+					
 					$token_json = json_decode($body) ;
+
+					if ( $debugToken )
+					{
+						echo '<pre>URL'."\n".$this->url_api().'oauth/token</pre>' ;
+						echo '<pre>CURL_GETINFO'."\n".print_r(curl_getinfo($ch),true).'</pre>' ;
+						echo '<pre>CURL_VERSION'."\n".print_r(curl_version(),true).'</pre>' ;
+						echo '<pre>HEADER'."\n".print_r($header,true).'</pre>' ;
+						echo '<pre>BODY'."\n".print_r($body,true).'</pre>' ;
+						echo '<pre>token_json'."\n".print_r($token_json,true).'</pre>' ;
+					}
 
 					if ( curl_errno($ch) !== 0 ) throw new \Exception(__LINE__.curl_error($ch), curl_errno($ch));
 					elseif ( json_last_error() !== JSON_ERROR_NONE ) throw new \Exception(__LINE__.'gimme_token : le retour de curl n\'est pas une chaîne json valide');
