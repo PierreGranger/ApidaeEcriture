@@ -482,7 +482,10 @@
 			$h1 = strip_tags($className.' - '.$sujet) ;
 			$sujet = $h1 ;
 
-			$method = ( class_exists('\PHPMailer') ) ? 'phpmailer' : 'mail' ;
+			$method = 'mail' ;
+
+			if ( class_exists('\PHPMailer\PHPMailer\PHPMailer') ) $method = 'phpmailer6' ;
+			elseif ( class_exists('\PHPMailer') ) $method = 'phpmailer5' ;
 
 			if ( $this->debug ) $sujet .= ' ['.$method.']' ;
 
@@ -522,7 +525,7 @@
 			
 			$message_texte = strip_tags(nl2br($message_html)) ;
 			
-			if ( $method == 'phpmailer' )
+			if ( $method == 'phpmailer5' )
 			{
 				$mail = new \PHPMailer();
 				try {
@@ -543,7 +546,34 @@
 				    $mail->send();
 				    return true ;
 
-				} catch (Exception $e) {
+				} catch (\Exception $e) {
+				    throw new \Exception($e) ;
+				}
+			}
+			elseif ( $method == 'phpmailer6' )
+			{
+				$mail = new \PHPMailer\PHPMailer\PHPMailer();
+				try {
+				    $mail->setFrom($from) ;
+				   	
+				   	foreach ( $mailto as $t )
+				    	$mail->addAddress($t) ;
+				    
+				    foreach ( $mails_admin as $mail_admin )
+				    	$mail->AddBCC($mail_admin) ;
+
+				    $mail->CharSet = 'UTF-8' ;
+				    $mail->isHTML(true);
+				    $mail->Subject = $sujet ;
+				    $mail->Body    = $message_html ;
+				    $mail->AltBody = $message_texte ;
+
+				    $mail->send();
+				    return true ;
+
+				} catch (\PHPMailer\PHPMailer\Exception $e) {
+				    echo 'Message could not be sent.';
+				    echo 'Mailer Error: ' . $mail->ErrorInfo;
 				    throw new \Exception($e) ;
 				}
 			}
