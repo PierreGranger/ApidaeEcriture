@@ -1,7 +1,7 @@
 <?php
 
 	namespace PierreGranger ;
-/*
+/**
 *
 * @author  Pierre Granger <pierre@pierre-granger.fr>
 *
@@ -10,12 +10,12 @@
 	class ApidaeEcriture {
 
 		protected static $url_api = Array(
-			'preprod' => 'http://api.sitra2-vm-preprod.accelance.net/',
+			'preprod' => 'https://api.apidae-tourisme-recette.accelance.net/',
 			'prod' => 'https://api.apidae-tourisme.com/'
 		) ;
 
 		protected static $url_base = Array(
-			'preprod' => 'http://sitra2-vm-preprod.accelance.net/',
+			'preprod' => 'https://base.apidae-tourisme-recette.accelance.net/',
 			'prod' => 'https://base.apidae-tourisme.com/'
 		) ;
 
@@ -37,6 +37,7 @@
 
 		protected $projet_ecriture_clientId ;
 		protected $projet_ecriture_secret ;
+		protected $projet_ecriture_projectId ;
 
 		public function __construct($params=null) {
 			
@@ -50,6 +51,7 @@
 
 			if ( isset($params['projet_ecriture_clientId']) ) $this->projet_ecriture_clientId = $params['projet_ecriture_clientId'] ; else throw new \Exception('missing projet_ecriture_clientId') ;
 			if ( isset($params['projet_ecriture_secret']) ) $this->projet_ecriture_secret = $params['projet_ecriture_secret'] ; else throw new \Exception('missing projet_ecriture_secret') ;
+			if ( isset($params['projet_ecriture_projectId']) ) $this->projet_ecriture_projectId = $params['projet_ecriture_projectId'] ;
 
 			if ( isset($params['skipValidation']) ) $this->skipValidation = ( $params['skipValidation'] ) ? true : false ;
 
@@ -618,18 +620,18 @@
 		// Méthode empruntée de https://github.com/guzzle/guzzle/blob/3a0787217e6c0246b457e637ddd33332efea1d2a/src/Guzzle/Http/Message/PostFile.php#L90
 		public function getCurlValue($filePath, $contentType, $fileName)
 		{
-		// Disponible seulement en PHP >= 5.5
-		if (function_exists('curl_file_create')) {
-		    return curl_file_create($filePath, $contentType, $fileName);
-		}
+			// Disponible seulement en PHP >= 5.5
+			if (function_exists('curl_file_create')) {
+				return curl_file_create($filePath, $contentType, $fileName);
+			}
 
-		// Version compatible PHP < 5.5
-		$value = "@{$filePath};filename=" . $fileName;
-		if ($contentType) {
-		    $value .= ';type=' . $contentType;
-		}
+			// Version compatible PHP < 5.5
+			$value = "@{$filePath};filename=" . $fileName;
+			if ($contentType) {
+				$value .= ';type=' . $contentType;
+			}
 
-		return $value;
+			return $value;
 		}
 
 
