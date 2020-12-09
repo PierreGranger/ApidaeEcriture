@@ -544,9 +544,8 @@
 				    $mail->Subject = $sujet ;
 				    $mail->Body    = $message_html ;
 				    $mail->AltBody = $message_texte ;
-
-				    $mail->send();
-				    return true ;
+					
+				    return $mail->send() ;
 
 				} catch (\Exception $e) {
 				    throw new \Exception($e) ;
@@ -569,9 +568,8 @@
 				    $mail->Subject = $sujet ;
 				    $mail->Body    = $message_html ;
 				    $mail->AltBody = $message_texte ;
-
-				    $mail->send();
-				    return true ;
+					
+				    return $mail->send();
 
 				} catch (\PHPMailer\PHPMailer\Exception $e) {
 				    echo 'Message could not be sent.';
