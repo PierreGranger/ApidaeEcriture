@@ -2,6 +2,6 @@
 
 	// Renommer en config.inc.php
 
-	$_config['projet_ecriture_clientId'] = '' ;
-	$_config['projet_ecriture_secret'] = '' ;
-	$_config['mail_admin'] = '' ;
+	$configApidaeEcriture['projet_ecriture_clientId'] = '' ;
+	$configApidaeEcriture['projet_ecriture_secret'] = '' ;
+	$configApidaeEcriture['mail_admin'] = '' ;

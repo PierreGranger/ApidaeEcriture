@@ -3,12 +3,12 @@
 	include(realpath(dirname(__FILE__)).'/../vendor/autoload.php') ;
 	include(realpath(dirname(__FILE__)).'/../config.inc.php') ;
 
-	$ae = new \PierreGranger\ApidaeEcriture(Array(
-		'type_prod' => 'preprod',
-		'projet_ecriture_clientId' => $_config['projet_ecriture_clientId'],
-		'projet_ecriture_secret' => $_config['projet_ecriture_secret'],
-		'skipValidation' => true,
-		'mail_admin' => $_config['mail_admin']
+	$ApidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
+		$configApidaeEcriture,
+		Array(
+			'type_prod' => 'preprod',
+			'skipValidation' => true,
+		)
 	)) ;
 
 	$root = Array() ;
