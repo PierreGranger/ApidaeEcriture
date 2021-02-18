@@ -127,37 +127,53 @@
 			}
 			elseif ( $method == 'curl' )
 			{
-
-				try {
-					
-					$ch = curl_init();
-					
-					curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/ecriture/');
-					
-					$header = Array() ;
-					$header[] = "Authorization: Bearer ".$access_token ;
-					curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-					curl_setopt($ch,CURLOPT_POSTFIELDS, ($params));
-					curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-					// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/oauth/authentification-avec-un-token-oauth2
-					curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-					curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
-					
-					$result = curl_exec($ch);
+				$ch = curl_init();
 				
-					if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
-					
-					$result = json_decode($result,true) ;
-					if ( isset($result['id']) )
+				curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/ecriture/');
+				
+				$header = Array() ;
+				$header[] = "Authorization: Bearer ".$access_token ;
+				curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+				curl_setopt($ch,CURLOPT_POSTFIELDS, ($params));
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
+				// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/oauth/authentification-avec-un-token-oauth2
+				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+				curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
+				curl_setopt($ch, CURLOPT_HEADER, 1);
+				
+				$response = curl_exec($ch);
+
+				$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+				$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+				$header = substr($response, 0, $header_size);
+				$result = substr($response, $header_size);
+				
+				if ( $http_code != 200 )
+				{
+					if ( $this->isJson($result) )
+					{
+						$tmp = json_decode($result) ;
+						if ( isset($tmp->message) )
+							throw new \Exception('API failed : '.$http_code.' '.$tmp->message) ;
+						else
+							throw new \Exception('API failed : '.$http_code) ;
+					}
+					else
+						throw new \Exception('API failed : '.$http_code) ;
+				}
+
+				if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
+				
+				$result = json_decode($result,true) ;
+				if ( isset($result['id']) )
+				{
+					if ( preg_match('#^[0-9]+$#',$result['id']) ){
 						$this->last_id = $result['id'] ;
-					
-				} catch(\Exception $e) {
-					$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
-					if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
+					}
+					else throw new \Exception('Lastid is not a number') ;
 				}
 				
-				curl_close($ch);
-
+				curl_close($ch) ;
 			}
 
 			$this->debug($result,'$result') ;
