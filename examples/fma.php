@@ -6,7 +6,8 @@
 	$ApidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
 		$configApidaeEcriture,
 		Array(
-			'type_prod' => 'preprod',
+			'debug' => true,
+			'type_prod' => 'prod',
 			'skipValidation' => true,
 		)
 	)) ;
@@ -17,7 +18,7 @@
 	$root['type'] = 'FETE_ET_MANIFESTATION' ;
 
 	$fieldlist[] = 'nom' ;
-	$root['nom']['libelleFr'] = 'FMA TEST ApidaeEcriture' ;
+	$root['nom']['libelleFr'] = 'FMA TEST ApidaeEcriture '.date('d/m/Y') ;
 
 	$fieldlist[] = 'localisation.adresse.adresse1' ;
 	$root['localisation']['adresse']['adresse1'] = 'Adresse 1' ;
@@ -64,8 +65,8 @@
 	$periodesOuvertures = Array() ;
 
 	$periodesOuvertures[] = Array(
-		'dateDebut' => '2020-01-01',
-		'dateFin' => '2020-01-01',
+		'dateDebut' => date('Y-m-d'),
+		'dateFin' => date('Y-m-d',strtotime('+1 day')),
 		'horaireOuverture' => "11:00:00",
 		'horaireFermeture' => "12:00:00",
 		'tousLesAns' => false,
@@ -73,8 +74,8 @@
 	) ;
 
 	$periodesOuvertures[] = Array(
-		'dateDebut' => '2020-02-02',
-		'dateFin' => '2020-02-02',
+		'dateDebut' => date('Y-m-d',strtotime('+1 week')),
+		'dateFin' => date('Y-m-d',strtotime('+1 month')),
 		'horaireOuverture' => "16:00:00",
 		'horaireFermeture' => "17:00:00",
 		'tousLesAns' => false,
@@ -99,7 +100,7 @@
 	*/
 	$image = realpath(dirname(__FILE__).'/logo-Apidae-760x350.jpg') ;
 
-	$medias['multimedia.illustration-1'] = $ae->getCurlValue($image,mime_content_type($image),basename($image)) ;
+	$medias['multimedia.illustration-1'] = $ApidaeEcriture->getCurlValue($image,mime_content_type($image),basename($image)) ;
 	$illustration = Array() ;
 	$illustration['link'] = false ;
 	$illustration['type'] = 'IMAGE' ;
@@ -117,15 +118,15 @@
 		'medias' => $medias
 	) ;
 
+	$ko = Array() ;
+
 	try {
-		$ko = $ae->ajouter($enregistrer) ;
+		$ko = $ApidaeEcriture->ajouter($enregistrer) ;
 	}
 	catch ( Exception $e ) {
-		echo '<pre>' ;
-		print_r($e) ;
-		echo '</pre>' ;
+		$ApidaeEcriture->showException($e) ;
 	}
 	
-	$ae->alerte(__FILE__,$ko) ;
+	$ApidaeEcriture->alerte(__FILE__,$ko) ;
 
 	print_r($ko) ;

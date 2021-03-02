@@ -96,97 +96,48 @@
 			$this->debug($root,'$root') ;
 			$this->debug($params,'$params') ;
 
-			try {
-				$access_token = $this->gimme_token($clientId,$secret) ;
-				$this->debug($access_token,'$access_token') ;
-
-				if ( ! $access_token )
-				{
-					throw new \Exception(__LINE__.'Impossible de récupérer le token d\'écriture') ;
+			$access_token = $this->gimme_token($clientId,$secret) ;
+			
+			$result = $this->request('/api/v002/ecriture/',Array(
+				'token' => $access_token,
+				'POSTFIELDS' => $params,
+				'CUSTOMREQUEST' => 'PUT',
+				'format' => 'json'
+			)) ;
+				
+			if ( isset($result['array']['id']) )
+			{
+				if ( preg_match('#^[0-9]+$#',$result['array']['id']) ){
+					$this->last_id = $result['array']['id'] ;
 				}
-			}
-			catch(\Exception $e) {
-				$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
-				if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
-				return Array('errorCode'=>$e->getCode(),'message'=>$e->getMessage()) ;
+				else throw new \Exception('Lastid is not a number') ;
 			}
 			
-			$method = 'curl' ;
-
-			if ( class_exists('\Sitra\ApiClient\Client') && $this->debug )
-				$method = 'tractopelle' ;
-
-			if ( $method == 'tractopelle' )
+			if ( isset($result['array']['errorType']) )
 			{
-				$client = new \Sitra\ApiClient\Client([
-				    'ssoClientId'    => $clientId,
-				    'ssoSecret'      => $secret
-				]);
-				
-				$client->ecrire($params);
-			}
-			elseif ( $method == 'curl' )
-			{
-				$ch = curl_init();
-				
-				curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/ecriture/');
-				
-				$header = Array() ;
-				$header[] = "Authorization: Bearer ".$access_token ;
-				curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-				curl_setopt($ch,CURLOPT_POSTFIELDS, ($params));
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-				// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/oauth/authentification-avec-un-token-oauth2
-				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-				curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
-				curl_setopt($ch, CURLOPT_HEADER, 1);
-				
-				$response = curl_exec($ch);
-
-				$header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-				$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-				$header = substr($response, 0, $header_size);
-				$result = substr($response, $header_size);
-				
-				if ( $http_code != 200 )
-				{
-					if ( $this->isJson($result) )
-					{
-						$tmp = json_decode($result) ;
-						if ( isset($tmp->message) )
-							throw new \Exception('API failed : '.$http_code.' '.$tmp->message) ;
-						else
-							throw new \Exception('API failed : '.$http_code) ;
-					}
-					else
-						throw new \Exception('API failed : '.$http_code) ;
-				}
-
-				if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
-				
-				$result = json_decode($result,true) ;
-				if ( isset($result['id']) )
-				{
-					if ( preg_match('#^[0-9]+$#',$result['id']) ){
-						$this->last_id = $result['id'] ;
-					}
-					else throw new \Exception('Lastid is not a number') ;
-				}
-				
-				curl_close($ch) ;
+				$ko[] = __LINE__.$result['array']['errorType'] ;
+				$ko[] = __LINE__.$result['array']['message'] ;
+				throw new ApidaeException('ecriture_error',ApidaeException::INVALID_PARAMETER,Array(
+					'debug' => $this->debug,
+					'result' => $result
+				)) ;
 			}
 
-			$this->debug($result,'$result') ;
+			/*
+			Exemple d'erreur reçue : diffile de découper ça pour en récupérer une info lisible.
+			Pas grand chose d'autre à faire que d'afficher l'erreur "brute".
 			
-			if ( ! is_array($result) )
-			{
-				$ko[] = __LINE__.$result ;
-			}
-			elseif ( isset($result['errorType']) )
-			{
-				$ko[] = __LINE__.$result['errorType'] ;
-				$ko[] = __LINE__.$result['message'] ;
-			}
+			Erreur lors du traitement des données pour le paramètre 'root'. Cause: Unrecognized field "0"
+				(class com.rhonealpestourisme.sitra.core.common.business.objettouristique.common.model.ouverture.PeriodeOuverture),
+				not marked as ignorable
+					(14 known properties: "complementHoraire", "ouverturesJourDuMois", "tousLesAns", "identifiant", "nom", "ouverturesJournalieres", "dateDebut", "horaireFermeture", "type", "dateFin", "identifiantTechnique", "horaireOuverture", "ouverturesExceptionnelles", "identifiantTemporaire"])
+ 				at [Source: {"type":"FETE_ET_MANIFESTATION","nom":{"libelleFr":"FMA TEST ApidaeEcriture 02\/03\/2021"},"localisation":{"adresse":{"adresse1":"Adresse 1","adresse2":"Adresse 2","adresse3":"Adresse 3","codePostal":"03400","commune":{"id":1555}}},"informationsFeteEtManifestation":{"portee":{"elementReferenceType":"FeteEtManifestationPortee","id":2354}},"contacts":[{"referent":true,"nom":"Nom contact 1","prenom":"Pr\u00e9nom contact 1","moyensCommunication":[{"type":{"id":204,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"contact1@mail.fr"}},{"type":{"id":201,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"01 02 03 04 05"}}]},{"nom":"Nom contact 2","prenom":"Pr\u00e9nom contact 2","moyensCommunication":[{"type":{"id":204,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"contact2@mail.fr"}},{"type":{"id":201,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"06 07 08 09 10"}}]}],"ouverture":{"periodesOuvertures":[{"dateDebut":"2021-03-02","dateFin":"2021-03-02","0":1614794098,"horaireOuverture":"11:00:00","horaireFermeture":"12:00:00","tousLesAns":false,"type":"OUVERTURE_SAUF"},{"dateDebut":"2021-03-09","dateFin":"2021-04-02","horaireOuverture":"16:00:00","horaireFermeture":"17:00:00","tousLesAns":false,"type":"OUVERTURE_SAUF"}]},"illustrations":[{"link":false,"type":"IMAGE","nom":{"libelleFr":"L\u00e9gende image 1"},"copyright":{"libelleFr":"Copyright image 1"},"traductionFichiers":[{"locale":"fr","url":"MULTIMEDIA#illustration-1"}]}]}; 
+				 line: 1, column: 1058]
+				 (through reference chain: com.rhonealpestourisme.sitra.core.common.api.business.objettouristique.model.FeteEtManifestationBean["ouverture"]->
+				 com.rhonealpestourisme.sitra.core.common.business.objettouristique.common.model.ouverture.Ouverture["periodesOuvertures"]->java.util.HashSet[0]->
+				 com.rhonealpestourisme.sitra.core.common.business.objettouristique.common.model.ouverture.PeriodeOuverture["0"])
+
+			*/
 
 			if ( sizeof($ko) > 0 )
 			{
@@ -239,64 +190,25 @@
 			/* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
 			$POSTFIELDS = Array('donneesPrivees'=>json_encode($donneesPrivees)) ;
 
-			try {
-				$access_token = $this->gimme_token() ;
-				$this->debug($access_token,'$access_token') ;
+			$access_token = $this->gimme_token() ;
 
-				if ( ! isset($access_token) )
-				{
-					throw new \Exception(__LINE__.'Le token d\'écriture n\'a pas pu être récupéré') ;	
-				}
-			}
-			catch(\Exception $e) {
-				$msg = sprintf( 'Curl failed with error #%d: %s', $e->getCode(), $e->getMessage() ) ;
-				if ( $this->debug ) echo '<div class="alert alert-warning">'.$msg.'</div>' ;
-				return Array('errorCode'=>$e->getCode(),'message'=>$e->getMessage()) ;
-			}
+			$result = $this->request('/api/v002/donnees-privees/',Array(
+				'token' => $access_token,
+				'POSTFIELDS' => $POSTFIELDS,
+				'CUSTOMREQUEST' => 'PUT',
+				'format' => 'json'
+			)) ;
 
-			try {
-
-				$ch = curl_init() ;
-				curl_setopt($ch,CURLOPT_URL, $this->url_api().'api/v002/donnees-privees/');
-				$header = Array() ;
-				$header[] = "Authorization: Bearer ".$access_token ;
-				curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-				curl_setopt($ch, CURLOPT_POSTFIELDS, $POSTFIELDS);
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-				curl_setopt($ch, CURLOPT_ENCODING, 'UTF-8');
-				
-				$result = curl_exec($ch);
+			$json_result = $result['object'] ;
 			
-				if (FALSE === $result) throw new \Exception(curl_error($ch), curl_errno($ch));
-				
-				$json_result = json_decode($result) ;
-				$is_json =  ( json_last_error() == JSON_ERROR_NONE ) ;
-				
-				if ( ! $is_json )
-				{
-					return false ;
-				}
-
-				if ( $json_result->status == 'MODIFICATION_DONNEES_PRIVEES' )
-				{
-					return true ;
-				}
-				else
-					return $json_result->status.' - '.$json_result->message ;
-
-				curl_close($ch);
-
+			if ( $json_result->status == 'MODIFICATION_DONNEES_PRIVEES' )
+			{
 				return true ;
-				
-			} catch(\Exception $e) {
-
-				trigger_error(sprintf(
-					'Curl failed with error #%d: %s',
-					$e->getCode(), $e->getMessage()),
-					E_USER_ERROR);
-
 			}
+			else
+				return $json_result->status.' - '.$json_result->message ;
+
+			return true ;
 		}
 
 		// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/cas-particulier-des-multimedias
