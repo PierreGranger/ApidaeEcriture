@@ -1,132 +1,129 @@
 <?php
 
-	include(realpath(dirname(__FILE__)).'/../vendor/autoload.php') ;
-	include(realpath(dirname(__FILE__)).'/../config.inc.php') ;
+include(realpath(dirname(__FILE__)) . '/../vendor/autoload.php');
+include(realpath(dirname(__FILE__)) . '/../config.inc.php');
 
-	$ApidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
-		$configApidaeEcriture,
-		Array(
-			'debug' => true,
-			'type_prod' => 'prod',
-			'skipValidation' => true,
-		)
-	)) ;
+$ApidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
+	$configApidaeEcriture,
+	array(
+		'debug' => true,
+		'type_prod' => 'prod',
+		'skipValidation' => true,
+	)
+));
 
-	$root = Array() ;
-	$fieldlist = Array() ;
-	
-	$root['type'] = 'FETE_ET_MANIFESTATION' ;
+$root = array();
+$fieldlist = array();
 
-	$fieldlist[] = 'nom' ;
-	$root['nom']['libelleFr'] = 'FMA TEST ApidaeEcriture '.date('d/m/Y') ;
+$root['type'] = 'FETE_ET_MANIFESTATION';
 
-	$fieldlist[] = 'localisation.adresse.adresse1' ;
-	$root['localisation']['adresse']['adresse1'] = 'Adresse 1' ;
-	$fieldlist[] = 'localisation.adresse.adresse2' ;
-	$root['localisation']['adresse']['adresse2'] = 'Adresse 2' ;
-	$fieldlist[] = 'localisation.adresse.adresse3' ;
-	$root['localisation']['adresse']['adresse3'] = 'Adresse 3' ;
-	$fieldlist[] = 'localisation.adresse.codePostal' ;
-	$root['localisation']['adresse']['codePostal'] = '03400' ;
-	$fieldlist[] = 'localisation.adresse.commune' ;
-	$root['localisation']['adresse']['commune']['id'] = 1555 ; // Yzeure
+$fieldlist[] = 'nom';
+$root['nom']['libelleFr'] = 'FMA TEST ApidaeEcriture ' . date('d/m/Y');
 
-	$root['informationsFeteEtManifestation']['portee']['elementReferenceType'] = 'FeteEtManifestationPortee' ;
-	$fieldlist[] = 'informationsFeteEtManifestation.portee' ;
-	$root['informationsFeteEtManifestation']['portee']['id'] = 2354 ; // Habitants
+$fieldlist[] = 'localisation.adresse.adresse1';
+$root['localisation']['adresse']['adresse1'] = 'Adresse 1';
+$fieldlist[] = 'localisation.adresse.adresse2';
+$root['localisation']['adresse']['adresse2'] = 'Adresse 2';
+$fieldlist[] = 'localisation.adresse.adresse3';
+$root['localisation']['adresse']['adresse3'] = 'Adresse 3';
+$fieldlist[] = 'localisation.adresse.codePostal';
+$root['localisation']['adresse']['codePostal'] = '03400';
+$fieldlist[] = 'localisation.adresse.commune';
+$root['localisation']['adresse']['commune']['id'] = 1555; // Yzeure
 
-	$contacts = Array() ;
+$root['informationsFeteEtManifestation']['portee']['elementReferenceType'] = 'FeteEtManifestationPortee';
+$fieldlist[] = 'informationsFeteEtManifestation.portee';
+$root['informationsFeteEtManifestation']['portee']['id'] = 2354; // Habitants
 
-	$contacts[] = Array(
-		'referent' => true,
-		'nom' => 'Nom contact 1',
-		'prenom' => 'Prénom contact 1',
-		'moyensCommunication' => Array(
-			Array('type' =>Array('id'=>204,'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees'=> Array('fr'=>'contact1@mail.fr') ),
-			Array('type' =>Array('id'=>201,'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees'=> Array('fr'=>'01 02 03 04 05') )
-		)
-	) ;
+$contacts = array();
 
-	$contacts[] = Array(
-		'nom' => 'Nom contact 2',
-		'prenom' => 'Prénom contact 2',
-		'moyensCommunication' => Array(
-			Array('type' =>Array('id'=>204,'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees'=> Array('fr'=>'contact2@mail.fr') ),
-			Array('type' =>Array('id'=>201,'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees'=> Array('fr'=>'06 07 08 09 10') )
-		)
-	) ;
+$contacts[] = array(
+	'referent' => true,
+	'nom' => 'Nom contact 1',
+	'prenom' => 'Prénom contact 1',
+	'moyensCommunication' => array(
+		array('type' => array('id' => 204, 'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees' => array('fr' => 'contact1@mail.fr')),
+		array('type' => array('id' => 201, 'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees' => array('fr' => '01 02 03 04 05'))
+	)
+);
 
-	if ( sizeof($contacts) > 0 )
-	{
-		$fieldlist[] = 'contacts' ;
-		$root['contacts'] = $contacts ;
-	}
+$contacts[] = array(
+	'nom' => 'Nom contact 2',
+	'prenom' => 'Prénom contact 2',
+	'moyensCommunication' => array(
+		array('type' => array('id' => 204, 'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees' => array('fr' => 'contact2@mail.fr')),
+		array('type' => array('id' => 201, 'elementReferenceType' => 'MoyenCommunicationType'), 'coordonnees' => array('fr' => '06 07 08 09 10'))
+	)
+);
 
-	$periodesOuvertures = Array() ;
+if (sizeof($contacts) > 0) {
+	$fieldlist[] = 'contacts';
+	$root['contacts'] = $contacts;
+}
 
-	$periodesOuvertures[] = Array(
-		'dateDebut' => date('Y-m-d'),
-		'dateFin' => date('Y-m-d',strtotime('+1 day')),
-		'horaireOuverture' => "11:00:00",
-		'horaireFermeture' => "12:00:00",
-		'tousLesAns' => false,
-		'type' => 'OUVERTURE_SAUF'
-	) ;
+$periodesOuvertures = array();
 
-	$periodesOuvertures[] = Array(
-		'dateDebut' => date('Y-m-d',strtotime('+1 week')),
-		'dateFin' => date('Y-m-d',strtotime('+1 month')),
-		'horaireOuverture' => "16:00:00",
-		'horaireFermeture' => "17:00:00",
-		'tousLesAns' => false,
-		'type' => 'OUVERTURE_SAUF'
-	) ;
+$periodesOuvertures[] = array(
+	'dateDebut' => date('Y-m-d'),
+	'dateFin' => date('Y-m-d', strtotime('+1 day')),
+	'horaireOuverture' => "11:00:00",
+	'horaireFermeture' => "12:00:00",
+	'tousLesAns' => false,
+	'type' => 'OUVERTURE_SAUF'
+);
+
+$periodesOuvertures[] = array(
+	'dateDebut' => date('Y-m-d', strtotime('+1 week')),
+	'dateFin' => date('Y-m-d', strtotime('+1 month')),
+	'horaireOuverture' => "16:00:00",
+	'horaireFermeture' => "17:00:00",
+	'tousLesAns' => false,
+	'type' => 'OUVERTURE_SAUF'
+);
 
 
-	if ( sizeof ($periodesOuvertures) > 0  )
-	{
-		$fieldlist[] = 'ouverture.periodesOuvertures' ;
-		$root['ouverture']['periodesOuvertures'] = $periodesOuvertures ;
-	}
+if (sizeof($periodesOuvertures) > 0) {
+	$fieldlist[] = 'ouverture.periodesOuvertures';
+	$root['ouverture']['periodesOuvertures'] = $periodesOuvertures;
+}
 
-	
 
-	$medias = Array() ;
-	$root['illustrations'] = Array() ;
 
-	/*
+$medias = array();
+$root['illustrations'] = array();
+
+/*
 	*	Exemple volontairement simpliste donné uniquement pour tester l'enregistrement.
 	*	Il va de soi qu'avant d'envoyer un fichier vous devez vérifier qu'il s'agit bien d'une image.
 	*/
-	$image = realpath(dirname(__FILE__).'/logo-Apidae-760x350.jpg') ;
+$image = realpath(dirname(__FILE__) . '/logo-Apidae-760x350.jpg');
 
-	$medias['multimedia.illustration-1'] = $ApidaeEcriture->getCurlValue($image,mime_content_type($image),basename($image)) ;
-	$illustration = Array() ;
-	$illustration['link'] = false ;
-	$illustration['type'] = 'IMAGE' ;
-	$illustration['nom']['libelleFr'] = 'Légende image 1' ;
-	$illustration['copyright']['libelleFr'] = 'Copyright image 1' ;
-	$illustration['traductionFichiers'][0]['locale'] = 'fr' ;
-	$illustration['traductionFichiers'][0]['url'] = 'MULTIMEDIA#illustration-1' ;
-	$root['illustrations'][] = $illustration ;
+$medias['multimedia.illustration-1'] = $ApidaeEcriture->getCurlValue($image, mime_content_type($image), basename($image));
+$illustration = array();
+$illustration['link'] = false;
+$illustration['type'] = 'IMAGE';
+$illustration['nom']['libelleFr'] = 'Légende image 1';
+$illustration['copyright']['libelleFr'] = 'Copyright image 1';
+$illustration['traductionFichiers'][0]['locale'] = 'fr';
+$illustration['traductionFichiers'][0]['url'] = 'MULTIMEDIA#illustration-1';
+$root['illustrations'][] = $illustration;
 
-	$fieldlist[] = 'illustrations' ;
+$fieldlist[] = 'illustrations';
 
-	$enregistrer = Array(
-		'fieldlist' => $fieldlist,
-		'root' => $root,
-		'medias' => $medias
-	) ;
+$enregistrer = array(
+	'fieldlist' => $fieldlist,
+	'root' => $root,
+	'medias' => $medias
+);
 
-	$ko = Array() ;
+$ko = array();
 
-	try {
-		$ko = $ApidaeEcriture->ajouter($enregistrer) ;
-	}
-	catch ( Exception $e ) {
-		$ApidaeEcriture->showException($e) ;
-	}
-	
-	$ApidaeEcriture->alerte(__FILE__,$ko) ;
+try {
+	$ko = $ApidaeEcriture->ajouter($enregistrer);
+} catch (Exception $e) {
+	$ApidaeEcriture->showException($e);
+}
 
-	print_r($ko) ;
+$ApidaeEcriture->alerte(__FILE__, $ko);
+
+print_r($ko);
