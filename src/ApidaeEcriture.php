@@ -2,6 +2,8 @@
 
 namespace PierreGranger;
 
+use PierreGranger\ApidaeCore;
+
 /**
  *
  * @author  Pierre Granger <pierre@pierre-granger.fr>
@@ -21,9 +23,11 @@ class ApidaeEcriture extends ApidaeCore
 
 	public $last_id = null;
 
-	protected $projet_ecriture_clientId;
+	public $projet_ecriture_clientId;
 	protected $projet_ecriture_secret;
-	protected $projet_ecriture_projectId;
+	public $projet_ecriture_projectId;
+
+	protected $lastAutorisation;
 
 	public function __construct(array $params = null)
 	{
@@ -203,6 +207,39 @@ class ApidaeEcriture extends ApidaeCore
 			return $json_result->status . ' - ' . $json_result->message;
 
 		return true;
+	}
+
+	/**
+	 * v002/autorisation/objet-touristique/modification/
+	 * Votre projet a-t-il les autorisations pour écrire sur cet objet ?
+	 * La recherche par tokenSSO permet de savoir si l'utilisateur authentifié (par son tokenSSO) pourra être désigné comme auteur des modifications
+	 * 
+	 * @param int $id_offre Identifiant de l'offre sur laquelle vous souhaitez écrire
+	 * @param string $tokenSSO Token SSO d'une personne identifiée (optionnel)
+	 * @return	bool	
+	 */
+	public function autorisation(int $id_offre, string $tokenSSO = null)
+	{
+		$result = $this->request('/api/v002/autorisation/objet-touristique/modification/' . $id_offre, array(
+			'token' => $this->gimme_token()
+		));
+		if (is_array($result) && isset($result['code'])) {
+			if ($result['code'] != 200) {
+				$this->lastAutorisation = 'HTTPCODE_' . $result['code'];
+				return false;
+			}
+			if (isset($result['body'])) $result['body'] = preg_replace('#"#', '', $result['body']);
+
+			$this->lastAutorisation = $result['body'];
+			return $result['body'] == 'MODIFICATION_POSSIBLE';
+		}
+		$this->lastAutorisation = 'NO_HTTPCODE_RETURNED';
+		return false;
+	}
+
+	public function lastAutorisationDetail()
+	{
+		return $this->lastAutorisation;
 	}
 
 	// http://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/cas-particulier-des-multimedias

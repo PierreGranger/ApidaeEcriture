@@ -3,7 +3,7 @@
 include(realpath(dirname(__FILE__)) . '/../vendor/autoload.php');
 include(realpath(dirname(__FILE__)) . '/../config.inc.php');
 
-$ApidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
+$apidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
 	$configApidaeEcriture,
 	array(
 		'debug' => true,
@@ -98,7 +98,7 @@ $root['illustrations'] = array();
 	*/
 $image = realpath(dirname(__FILE__) . '/logo-Apidae-760x350.jpg');
 
-$medias['multimedia.illustration-1'] = $ApidaeEcriture->getCurlValue($image, mime_content_type($image), basename($image));
+$medias['multimedia.illustration-1'] = $apidaeEcriture->getCurlValue($image, mime_content_type($image), basename($image));
 $illustration = array();
 $illustration['link'] = false;
 $illustration['type'] = 'IMAGE';
@@ -119,11 +119,11 @@ $enregistrer = array(
 $ko = array();
 
 try {
-	$ko = $ApidaeEcriture->ajouter($enregistrer);
+	$ko = $apidaeEcriture->ajouter($enregistrer);
 } catch (Exception $e) {
-	$ApidaeEcriture->showException($e);
+	$apidaeEcriture->showException($e);
 }
 
-$ApidaeEcriture->alerte(__FILE__, $ko);
+$apidaeEcriture->alerte(__FILE__, $ko);
 
 print_r($ko);
