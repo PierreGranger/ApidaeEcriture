@@ -17,7 +17,7 @@ class ApidaeEcriture extends ApidaeCore
 
 	public $statuts_api_ecriture = array('CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED', 'MODIFICATION_VALIDATION_SKIPPED', 'MODIFICATION_VALIDATION_ASKED', 'MODIFICATION_NO_DIFF', 'DEMANDE_SUPPRESSION_SENT', 'NO_ACTION');
 
-	protected static $modes = array('CREATION', 'MODIFICATION', 'DEMANDE_SUPPRESSION');
+	protected const MODES = array('CREATION', 'MODIFICATION', 'DEMANDE_SUPPRESSION');
 
 	protected $_config;
 
@@ -45,63 +45,92 @@ class ApidaeEcriture extends ApidaeCore
 		if (isset($params['skipValidation'])) $this->skipValidation = ($params['skipValidation']) ? true : false;
 	}
 
-	public function enregistrer($init_params = null)
+	public function enregistrer($params = null)
 	{
+		if (!is_array($params)) throw new \Exception('enregistrer_params_not_array');
 
-		if (!is_array($init_params)) {
-			throw new \Exception('enregistrer_params_not_array');
-			return false;
+		if (!isset($params['action']) || !in_array($params['action'], self::MODES)) throw new \Exception('enregistrer_action_null');
+		if (!in_array($params['action'], self::MODES)) throw new \Exception(__METHOD__ . ' : Action ' . $params['action'] . ' invalide');
+		$action = $params['action'];
+
+		$token = isset($params['token']) ? $params['token'] : null;
+
+		$ko = [];
+		$postfields = [];
+
+		$postfields['mode'] = $action;
+		if ($postfields['mode'] == 'MODIFICATION' || $postfields['mode'] == 'DEMANDE_SUPPRESSION') {
+			if (isset($params['idFiche'])) $postfields['id'] = $params['idFiche'];
+			elseif (isset($params['id'])) $postfields['id'] = $params['id'];
+			else throw new \Exception(__METHOD__ . ' : Identifiant de fiche non trouvé (id, idFiche ?)');
 		}
 
-		if (!isset($init_params['fieldlist'])) throw new \Exception('enregistrer_fieldlist_null');
-		if (!isset($init_params['root'])) throw new \Exception('enregistrer_root_null');
-		if (!isset($init_params['action']) || !in_array($init_params['action'], self::$modes)) throw new \Exception('enregistrer_action_null');
+		$postfields['skipValidation'] = $this->skipValidation ? 'true' : 'false';
 
-		$fieldlist = $init_params['fieldlist'];
-		$root = $init_params['root'];
-		$medias = isset($init_params['medias']) ? $init_params['medias'] : null;
-		$proprietaireId = isset($init_params['proprietaireId']) && !empty($init_params['proprietaireId']) ? $init_params['proprietaireId'] : null;
-		$clientId = isset($init_params['clientId']) ? $init_params['clientId'] : null;
-		$secret = isset($init_params['secret']) ? $init_params['secret'] : null;
-		$action = $init_params['action'];
-		$idFiche = isset($init_params['idFiche']) ? $init_params['idFiche'] : null;
-		$token = isset($init_params['token']) ? $init_params['token'] : null;
+		if (isset($params['tokenSSO'])) $postfields['tokenSSO'] = $params['tokenSSO'];
 
-		$ko = array();
+		if ($postfields['mode'] != 'DEMANDE_SUPPRESSION') {
 
-		$fields = array('root');
-		$params = array();
+			/**
+			 * Le paramètre "type" est obligatoire pour la création (ne pas confondre avec root={"type":"EQUIPEMENT"}) 
+			 * Auparavant le paramètre était récupéré de root.type mais ce n'était pas techniquement très juste
+			 */
+			if ($postfields['mode'] == 'CREATION') {
+				if (isset($params['type'])) $postfields['type'] = $params['type'];
+				// Rétro compatibilité
+				elseif (isset($params['root']['type'])) $postfields['type'] = $params['root']['type'];
+				else throw new \Exception('Le paramètre "type" est obligatoire pour la CREATION');
+			}
 
-		if (!in_array($action, self::$modes)) {
-			throw new \Exception('Action ' . $action . ' invalide');
-			return false;
+			if (isset($params['proprietaireId']) && !empty($params['proprietaireId']))
+				$postfields['proprietaireId'] = $params['proprietaireId'];
+
+			if (isset($params['medias']) && is_array($params['medias']))
+				foreach ($params['medias'] as $k_media => $media)
+					$postfields[$k_media] = $media;
+
+			$fields = [];
+
+			/*
+				Traitement des données root, root.fieldList
+			*/
+			if (isset($params['root'])) {
+				$postfields['root'] = $params['root'];
+				$fields[] = 'root';
+			}
+			if (isset($params['fieldlist'])) $postfields['root.fieldList'] = $params['fieldlist'];
+			elseif (isset($params['root.fieldlist'])) $postfields['root.fieldList'] = $params['root.fieldlist'];
+
+
+			/*
+				Traitement des données aspect.XY.root, aspect.XY.root.fieldList
+			*/
+			$aspects = [];
+			foreach ($params as $param_key => $param_value) {
+				if (preg_match('#aspect\.([0-9a-zA-Z-_]+)\.root#', $param_key, $match)) {
+					$aspects[] = $match[1];
+					$fields[] = $param_key;
+					$postfields[$param_key] = $param_value;
+					if (isset($params[$param_key . '.fieldList']))
+						$postfields[$param_key . '.fieldList'] = $params[$param_key . '.fieldList'];
+				}
+			}
+
+
+			$postfields['fields'] = $fields;
 		}
 
-		$params['mode'] = $action;
-		if ($params['mode'] == 'MODIFICATION' || $params['mode'] == 'DEMANDE_SUPPRESSION') {
-			$params['id'] = $idFiche;
-		}
-		$params['skipValidation'] = $this->skipValidation ? 'true' : 'false';
-
-		if ($params['mode'] != 'DEMANDE_SUPPRESSION') {
-			$params['type'] = $root['type'];
-			$params['root'] = json_encode($root);
-			$params['fields'] = json_encode($fields);
-			$params['root.fieldList'] = json_encode($fieldlist);
-
-			if (!empty($proprietaireId))
-				$params['proprietaireId'] = $proprietaireId;
-
-			if (isset($medias) && is_array($medias))
-				foreach ($medias as $k_media => $media)
-					$params[$k_media] = $media;
+		foreach ($postfields as $k => $v) {
+			if (preg_match('#(fields|root|fieldList)$#', $k)) {
+				$postfields[$k] = json_encode($v);
+			}
 		}
 
-		$access_token = $this->gimme_token($clientId, $secret);
+		$access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
 
 		$result = $this->request('/api/v002/ecriture/', array(
 			'token' => $access_token,
-			'POSTFIELDS' => $params,
+			'POSTFIELDS' => $postfields,
 			'CUSTOMREQUEST' => 'PUT',
 			'format' => 'json'
 		));
@@ -116,7 +145,6 @@ class ApidaeEcriture extends ApidaeCore
 			$ko[] = __LINE__ . $result['array']['errorType'];
 			$ko[] = __LINE__ . $result['array']['message'];
 			throw new ApidaeException('ecriture_error', ApidaeException::INVALID_PARAMETER, array(
-				//'debug' => $this->debug,
 				'result' => $result
 			));
 		}
