@@ -13,7 +13,7 @@ use PierreGranger\ApidaeCore;
 class ApidaeEcriture extends ApidaeCore
 {
 
-	public $skipValidation = 'false';
+	public $skipValidation = false;
 
 	public $statuts_api_ecriture = array('CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED', 'MODIFICATION_VALIDATION_SKIPPED', 'MODIFICATION_VALIDATION_ASKED', 'MODIFICATION_NO_DIFF', 'DEMANDE_SUPPRESSION_SENT', 'NO_ACTION');
 
@@ -42,7 +42,7 @@ class ApidaeEcriture extends ApidaeCore
 		else throw new \Exception('missing projet_ecriture_secret');
 		if (isset($params['projet_ecriture_projectId'])) $this->projet_ecriture_projectId = $params['projet_ecriture_projectId'];
 
-		if (isset($params['skipValidation'])) $this->skipValidation = ($params['skipValidation']) ? true : false;
+		if (isset($params['skipValidation'])) $this->skipValidation = $params['skipValidation'] ? true : false;
 	}
 
 	public function enregistrer($params = null)
@@ -65,7 +65,9 @@ class ApidaeEcriture extends ApidaeCore
 			else throw new \Exception(__METHOD__ . ' : Identifiant de fiche non trouvé (id, idFiche ?)');
 		}
 
-		$postfields['skipValidation'] = $this->skipValidation ? 'true' : 'false';
+		// skipValidation doit être un string
+		if (isset($params['skipValidation'])) $postfields['skipValidation'] = $params['skipValidation'] ? 'true' : 'false';
+		else $postfields['skipValidation'] = $this->skipValidation ? 'true' : 'false';
 
 		if (isset($params['tokenSSO'])) $postfields['tokenSSO'] = $params['tokenSSO'];
 
@@ -99,7 +101,9 @@ class ApidaeEcriture extends ApidaeCore
 				$fields[] = 'root';
 			}
 			if (isset($params['fieldlist'])) $postfields['root.fieldList'] = $params['fieldlist'];
+			elseif (isset($params['fieldList'])) $postfields['root.fieldList'] = $params['fieldList'];
 			elseif (isset($params['root.fieldlist'])) $postfields['root.fieldList'] = $params['root.fieldlist'];
+			elseif (isset($params['root.fieldList'])) $postfields['root.fieldList'] = $params['root.fieldList'];
 
 
 			/*
@@ -248,9 +252,15 @@ class ApidaeEcriture extends ApidaeCore
 	 */
 	public function autorisation(int $id_offre, string $tokenSSO = null)
 	{
-		$result = $this->request('/api/v002/autorisation/objet-touristique/modification/' . $id_offre, array(
-			'token' => $this->gimme_token()
-		));
+		$params = [
+			'token' => $this->gimme_token(),
+			'CUSTOMREQUEST' => 'GET'
+		];
+		if ($tokenSSO != null) $params['POSTFIELDS'] = http_build_query(['tokenSSO' => $tokenSSO]);
+		$result = $this->request('/api/v002/autorisation/objet-touristique/modification/' . $id_offre, $params);
+
+		var_dump($result);
+
 		if (is_array($result) && isset($result['code'])) {
 			if ($result['code'] != 200) {
 				$this->lastAutorisation = 'HTTPCODE_' . $result['code'];

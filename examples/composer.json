@@ -1,0 +1,5 @@
+{
+    "require": {
+        "pierre-granger/apidae-sso": "^1.2"
+    }
+}

@@ -24,6 +24,8 @@ $tests = [
     5163353 => 'Offre masquée appartenant au propriétaire du projet d\'écriture', // Masqué
 ];
 
+echo $sep . '******** PROD ********' . $sep;
+
 foreach ($tests as $id_offre => $desc) {
     echo $sep . $id_offre . ' => ' . $desc . $sep;
     echo 'Autorisation ? ' . ($apidaeEcriture->autorisation($id_offre) ? 'Oui' : 'Non') . $sep;
