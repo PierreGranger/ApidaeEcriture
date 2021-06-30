@@ -148,9 +148,7 @@ class ApidaeEcriture extends ApidaeCore
 		if (isset($result['array']['errorType'])) {
 			$ko[] = __LINE__ . $result['array']['errorType'];
 			$ko[] = __LINE__ . $result['array']['message'];
-			throw new ApidaeException('ecriture_error', ApidaeException::INVALID_PARAMETER, array(
-				'result' => $result
-			));
+			throw new ApidaeException('ecriture_error', ApidaeException::INVALID_PARAMETER, $result);
 		}
 
 		/*
@@ -258,8 +256,6 @@ class ApidaeEcriture extends ApidaeCore
 		];
 		if ($tokenSSO != null) $params['POSTFIELDS'] = http_build_query(['tokenSSO' => $tokenSSO]);
 		$result = $this->request('/api/v002/autorisation/objet-touristique/modification/' . $id_offre, $params);
-
-		var_dump($result);
 
 		if (is_array($result) && isset($result['code'])) {
 			if ($result['code'] != 200) {
