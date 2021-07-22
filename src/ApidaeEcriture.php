@@ -29,6 +29,8 @@ class ApidaeEcriture extends ApidaeCore
 
 	protected $lastAutorisation;
 
+	protected $lastResult;
+
 	public function __construct(array $params = null)
 	{
 
@@ -138,6 +140,8 @@ class ApidaeEcriture extends ApidaeCore
 			'CUSTOMREQUEST' => 'PUT',
 			'format' => 'json'
 		));
+
+		$this->lastResult = $result;
 
 		if (isset($result['array']['id'])) {
 			if (preg_match('#^[0-9]+$#', $result['array']['id'])) {
@@ -292,5 +296,38 @@ class ApidaeEcriture extends ApidaeCore
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Renvoie le détail de $result de ApidaeCore::request
+	 * En cas de retour correct, renvoie un tableau :
+	 * [
+	 * 	'code' => 200,
+	 * 	'header' => 'HTTP/1.1 100 Continue...',
+	 * 	'body' => '{"status":"MODIFICATION_VALIDATION_ASKED"}',
+	 * 	'object' => {
+	 * 		'status' => 'MODIFICATION_VALIDATION_ASKED'
+	 * 	}
+	 * 	'array' => [
+	 * 		'status' => 'MODIFICATION_VALIDATION_ASKED'
+	 * 	]
+	 * ]
+	 * 
+	 * Exemple erreur
+	 * [
+	 * 	'body' => '{"message":"Cet objet est déjà en cours de modification","errorType":"ECRITURE_FORBIDDEN}',
+	 * 	'object' => {
+	 * 		'message' => 'Cet objet...',
+	 * 		'errorType' => 'ECRITURE_FORBIDDEN,
+	 * 	},
+	 * 	'array' => [
+	 * 		'message' => 'Cet objet...',
+	 * 		'errorType' => 'ECRITURE_FORBIDDEN,
+	 * 	]
+	 * ]
+	 */
+	public function lastResult()
+	{
+		return $this->lastResult;
 	}
 }
