@@ -114,7 +114,7 @@ class ApidaeEcriture extends ApidaeCore
 			*/
 			$aspects = [];
 			foreach ($params as $param_key => $param_value) {
-				if (preg_match('#aspect\.([0-9a-zA-Z-_]+)\.root#', $param_key, $match)) {
+				if (preg_match('#^aspect\.([0-9a-zA-Z-_]+)\.root$#', $param_key, $match)) {
 					$aspects[] = $match[1];
 					$fields[] = $param_key;
 					$postfields[$param_key] = $param_value;
