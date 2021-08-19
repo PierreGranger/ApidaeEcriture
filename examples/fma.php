@@ -1,5 +1,7 @@
 <?php
 
+use PierreGranger\ApidaeException;
+
 include(realpath(dirname(__FILE__)) . '/../vendor/autoload.php');
 include(realpath(dirname(__FILE__)) . '/../config.inc.php');
 
@@ -120,7 +122,8 @@ $ko = array();
 
 try {
 	$ko = $apidaeEcriture->ajouter($enregistrer);
-} catch (Exception $e) {
+} catch (ApidaeException $e) {
+	print_r($e->getDetails());
 	$apidaeEcriture->showException($e);
 }
 

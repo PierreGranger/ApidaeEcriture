@@ -30,6 +30,7 @@ class ApidaeEcriture extends ApidaeCore
 	protected $lastAutorisation;
 
 	protected $lastResult;
+	protected $lastPostfields;
 
 	public function __construct(array $params = null)
 	{
@@ -131,8 +132,11 @@ class ApidaeEcriture extends ApidaeCore
 				$postfields[$k] = json_encode($v);
 			}
 		}
+		$this->lastPostfields = $postfields;
 
 		$access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
+
+
 
 		$result = $this->request('/api/v002/ecriture/', array(
 			'token' => $access_token,
@@ -329,5 +333,10 @@ class ApidaeEcriture extends ApidaeCore
 	public function lastResult()
 	{
 		return $this->lastResult;
+	}
+
+	public function lastPostfields()
+	{
+		return $this->lastPostfields;
 	}
 }
