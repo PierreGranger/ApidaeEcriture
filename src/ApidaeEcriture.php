@@ -29,9 +29,6 @@ class ApidaeEcriture extends ApidaeCore
 
 	protected $lastAutorisation;
 
-	protected $lastResult;
-	protected $lastPostfields;
-
 	public function __construct(array $params = null)
 	{
 
@@ -132,11 +129,8 @@ class ApidaeEcriture extends ApidaeCore
 				$postfields[$k] = json_encode($v);
 			}
 		}
-		$this->lastPostfields = $postfields;
 
 		$access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
-
-
 
 		$result = $this->request('/api/v002/ecriture/', array(
 			'token' => $access_token,
@@ -147,15 +141,15 @@ class ApidaeEcriture extends ApidaeCore
 
 		$this->lastResult = $result;
 
-		if (isset($result['array']['id'])) {
-			if (preg_match('#^[0-9]+$#', $result['array']['id'])) {
-				$this->last_id = $result['array']['id'];
+		if (isset($result['id'])) {
+			if (preg_match('#^[0-9]+$#', $result['id'])) {
+				$this->last_id = $result['id'];
 			} else throw new \Exception('Lastid is not a number');
 		}
 
-		if (isset($result['array']['errorType'])) {
-			$ko[] = __LINE__ . $result['array']['errorType'];
-			$ko[] = __LINE__ . $result['array']['message'];
+		if (isset($result['errorType'])) {
+			$ko[] = __LINE__ . $result['errorType'];
+			$ko[] = __LINE__ . $result['message'];
 			throw new ApidaeException('ecriture_error', ApidaeException::INVALID_PARAMETER, $result);
 		}
 
@@ -303,40 +297,56 @@ class ApidaeEcriture extends ApidaeCore
 	}
 
 	/**
-	 * Renvoie le détail de $result de ApidaeCore::request
-	 * En cas de retour correct, renvoie un tableau :
-	 * [
-	 * 	'code' => 200,
-	 * 	'header' => 'HTTP/1.1 100 Continue...',
-	 * 	'body' => '{"status":"MODIFICATION_VALIDATION_ASKED"}',
-	 * 	'object' => {
-	 * 		'status' => 'MODIFICATION_VALIDATION_ASKED'
-	 * 	}
-	 * 	'array' => [
-	 * 		'status' => 'MODIFICATION_VALIDATION_ASKED'
-	 * 	]
-	 * ]
+	 * @see https://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/v002criteres-internes
 	 * 
-	 * Exemple erreur
-	 * [
-	 * 	'body' => '{"message":"Cet objet est déjà en cours de modification","errorType":"ECRITURE_FORBIDDEN}',
-	 * 	'object' => {
-	 * 		'message' => 'Cet objet...',
-	 * 		'errorType' => 'ECRITURE_FORBIDDEN,
-	 * 	},
-	 * 	'array' => [
-	 * 		'message' => 'Cet objet...',
-	 * 		'errorType' => 'ECRITURE_FORBIDDEN,
-	 * 	]
-	 * ]
+	 * Renvoie seulement true ou false :
+	 * les erreurs sont à traiter en récupérant les exception ou en analysant le contenu de ApidaeEcriture::lastResult() si le retour est false.
 	 */
-	public function lastResult()
+	public function critereInterne(string $method, array $id_offres, array $id_criteres): bool
 	{
-		return $this->lastResult;
-	}
+		if (!in_array($method, ['PUT', 'DELETE'])) throw new \Exception('bad method');
 
-	public function lastPostfields()
-	{
-		return $this->lastPostfields;
+		$id_offres = array_unique($id_offres);
+		$id_criteres = array_unique($id_criteres);
+		$offres = array_filter($id_offres, 'is_int');
+		$criteres = array_filter($id_criteres, 'is_int');
+		if (sizeof($offres) != sizeof($id_offres)) throw new \Exception('id_offres are not integers');
+		if (sizeof($criteres) != sizeof($id_criteres)) throw new \Exception('id_criteres are not integers');
+		if (sizeof($offres) == 0) throw new \Exception('no id_offres');
+		if (sizeof($criteres) == 0) throw new \Exception('no id_criteres');
+
+		$access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
+
+		$criteres = [
+			'id' => $offres,
+			$method == 'PUT' ? 'criteresInternesAAjouter' : 'criteresInternesASupprimer' => $criteres
+		];
+
+		$result = $this->request('/api/v002/criteres-internes/', array(
+			'token' => $access_token,
+			'POSTFIELDS' => ['criteres' => json_encode($criteres)],
+			'CUSTOMREQUEST' => $method,
+			'format' => 'json'
+		));
+
+		if (
+			isset($result['id'])
+			&& isset($result['status'])
+			&& (
+				($method == 'PUT' && $result['status'] == 'AJOUT_CRITERES')
+				|| ($method == 'DELETE' && $result['status'] == 'SUPPRESSION_CRITERES'))
+		) {
+			/**
+			 * L'enregistement s'est bien déroulé, mais il est possible que des offres aient été ignorées, dans ce cas on enrichit le lastResult d'un warning.
+			 */
+			if (sizeof($result['id']) != sizeof($offres))
+				$this->lastResult['warning'] = sizeof($result['id']) . ' offers updated, ' . sizeof($offres) . ' sent (' . implode(', ', array_diff($offres, $result['id'])) . ' not updated).';
+			return true;
+		}
+
+		/**
+		 * Une erreur s'est produite : on renvoie un simple false, le contenu de l'erreur est détaillé dans $lastResult.
+		 */
+		return false;
 	}
 }
