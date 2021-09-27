@@ -15,9 +15,9 @@ class ApidaeEcriture extends ApidaeCore
 
 	public $skipValidation = false;
 
-	public $statuts_api_ecriture = array('CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED', 'MODIFICATION_VALIDATION_SKIPPED', 'MODIFICATION_VALIDATION_ASKED', 'MODIFICATION_NO_DIFF', 'DEMANDE_SUPPRESSION_SENT', 'NO_ACTION');
+	public $statuts_api_ecriture = ['CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED', 'MODIFICATION_VALIDATION_SKIPPED', 'MODIFICATION_VALIDATION_ASKED', 'MODIFICATION_NO_DIFF', 'DEMANDE_SUPPRESSION_SENT', 'NO_ACTION'];
 
-	protected const MODES = array('CREATION', 'MODIFICATION', 'DEMANDE_SUPPRESSION');
+	protected const MODES = ['CREATION', 'MODIFICATION', 'DEMANDE_SUPPRESSION'];
 
 	protected $_config;
 
@@ -132,12 +132,12 @@ class ApidaeEcriture extends ApidaeCore
 
 		$access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
 
-		$result = $this->request('/api/v002/ecriture/', array(
+		$result = $this->request('/api/v002/ecriture/', [
 			'token' => $access_token,
 			'POSTFIELDS' => $postfields,
 			'CUSTOMREQUEST' => 'PUT',
 			'format' => 'json'
-		));
+		]);
 
 		$this->lastResult = $result;
 
@@ -201,42 +201,38 @@ class ApidaeEcriture extends ApidaeCore
 
 	public function enregistrerDonneesPrivees($idFiche, $cle, $valeur, $lng = 'fr')
 	{
-		$donneesPrivees = array('objetsTouristiques' => array());
+		$donneesPrivees = ['objetsTouristiques' => []];
 
 		/* Pour chaque objet touristique à modifer on peut avoir 1 ou plusieurs descriptifs privés à modifier. On va les stocker dans $descriptifsPrives. */
-		$descriptifsPrives = array();
+		$descriptifsPrives = [];
 
-		$descriptifsPrives[] = array(
+		$descriptifsPrives[] = [
 			'nomTechnique' => $cle,
-			'descriptif' => array(
+			'descriptif' => [
 				'libelle' . ucfirst($lng) => $valeur
-			)
-		);
+			]
+		];
 
 		/* Pour chaque objet à modifier on ajoute une entrée dans $donneesPrivees['objetsTouristiques'] */
-		$donneesPrivees['objetsTouristiques'][] = array(
+		$donneesPrivees['objetsTouristiques'][] = [
 			'id' => $idFiche,
 			'donneesPrivees' => $descriptifsPrives
-		);
+		];
 
 		/* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
-		$POSTFIELDS = array('donneesPrivees' => json_encode($donneesPrivees));
+		$POSTFIELDS = ['donneesPrivees' => json_encode($donneesPrivees)];
 
 		$access_token = $this->gimme_token();
 
-		$result = $this->request('/api/v002/donnees-privees/', array(
+		$result = $this->request('/api/v002/donnees-privees/', [
 			'token' => $access_token,
 			'POSTFIELDS' => $POSTFIELDS,
 			'CUSTOMREQUEST' => 'PUT',
 			'format' => 'json'
-		));
+		]);
 
-		$json_result = $result['object'];
-
-		if ($json_result->status == 'MODIFICATION_DONNEES_PRIVEES') {
-			return true;
-		} else
-			return $json_result->status . ' - ' . $json_result->message;
+		if ($result['status'] !== 'MODIFICATION_DONNEES_PRIVEES')
+			return $result['status'] . ' - ' . $result['message'];
 
 		return true;
 	}
@@ -322,12 +318,12 @@ class ApidaeEcriture extends ApidaeCore
 			$method == 'PUT' ? 'criteresInternesAAjouter' : 'criteresInternesASupprimer' => $criteres
 		];
 
-		$result = $this->request('/api/v002/criteres-internes/', array(
+		$result = $this->request('/api/v002/criteres-internes/', [
 			'token' => $access_token,
 			'POSTFIELDS' => ['criteres' => json_encode($criteres)],
 			'CUSTOMREQUEST' => $method,
 			'format' => 'json'
-		));
+		]);
 
 		if (
 			isset($result['id'])
