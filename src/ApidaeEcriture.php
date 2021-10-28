@@ -53,9 +53,6 @@ class ApidaeEcriture extends ApidaeCore
 		if (!in_array($params['action'], self::MODES)) throw new \Exception(__METHOD__ . ' : Action ' . $params['action'] . ' invalide');
 		$action = $params['action'];
 
-		$token = isset($params['token']) ? $params['token'] : null;
-
-		$ko = [];
 		$postfields = [];
 
 		$postfields['mode'] = $action;
@@ -148,8 +145,6 @@ class ApidaeEcriture extends ApidaeCore
 		}
 
 		if (isset($result['errorType'])) {
-			$ko[] = __LINE__ . $result['errorType'];
-			$ko[] = __LINE__ . $result['message'];
 			throw new ApidaeException('ecriture_error', ApidaeException::INVALID_PARAMETER, $result);
 		}
 
@@ -169,9 +164,6 @@ class ApidaeEcriture extends ApidaeCore
 
 			*/
 
-		if (sizeof($ko) > 0) {
-			return $ko;
-		}
 		return true;
 	}
 
@@ -199,7 +191,7 @@ class ApidaeEcriture extends ApidaeCore
 		return $this->enregistrer($params);
 	}
 
-	public function enregistrerDonneesPrivees($idFiche, $cle, $valeur, $lng = 'fr')
+	public function enregistrerDonneesPrivees($idFiche, $cle, $valeur, $lng = 'fr', $tokenSSO = null)
 	{
 		$donneesPrivees = ['objetsTouristiques' => []];
 
@@ -224,14 +216,31 @@ class ApidaeEcriture extends ApidaeCore
 
 		$access_token = $this->gimme_token();
 
-		$result = $this->request('/api/v002/donnees-privees/', [
+		$requestData = [
 			'token' => $access_token,
 			'POSTFIELDS' => $POSTFIELDS,
 			'CUSTOMREQUEST' => 'PUT',
 			'format' => 'json'
-		]);
+		];
 
-		if ($result['status'] !== 'MODIFICATION_DONNEES_PRIVEES')
+		if ($tokenSSO !== null)
+			$requestData['tokenSSO'] = $tokenSSO;
+
+		$result = $this->request('/api/v002/donnees-privees/', $requestData);
+
+		if (!isset($result['code'])) {
+			throw new \Exception('enregistrerDonneesPrivees : Unknown error');
+		}
+
+		if ($result['code'] != 200) {
+			if (isset($result['errorType']))
+				throw new \Exception('enregistrerDonneesPrivees : ' . $result['errorType'] . ' ' . @$result['message']);
+			if (isset($result['message']))
+				throw new \Exception('enregistrerDonneesPrivees : ' . $result['message']);
+			throw new \Exception('enregistrerDonneesPrivees : Unknown error (' . $result['code'] . ')');
+		}
+
+		if (isset($result['status']) && $result['status'] !== 'MODIFICATION_DONNEES_PRIVEES')
 			return $result['status'] . ' - ' . $result['message'];
 
 		return true;
