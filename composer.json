@@ -9,5 +9,8 @@
         "psr-4": {
             "PierreGranger\\": "src/"
         }
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.2"
     }
 }
