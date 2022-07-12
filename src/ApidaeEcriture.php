@@ -14,6 +14,8 @@ class ApidaeEcriture extends ApidaeCore
 {
     public $skipValidation = false;
 
+    public ?string $onValidationFail = null;
+
     public $statuts_api_ecriture = [
         'CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED',
         'MODIFICATION_VALIDATION_SKIPPED', 'MODIFICATION_VALIDATION_ASKED',
@@ -59,6 +61,10 @@ class ApidaeEcriture extends ApidaeCore
         if (isset($params['skipValidation'])) {
             $this->skipValidation = $params['skipValidation'] ? true : false;
         }
+
+        if (isset($params['onValidationFail'])) {
+            $this->onValidationFail = $params['onValidationFail'];
+        }
     }
 
     public function enregistrer($params = null): bool
@@ -93,6 +99,12 @@ class ApidaeEcriture extends ApidaeCore
             $postfields['skipValidation'] = $params['skipValidation'] ? 'true' : 'false';
         } else {
             $postfields['skipValidation'] = $this->skipValidation ? 'true' : 'false';
+        }
+
+        if (isset($params['onValidationFail'])) {
+            $postfields['onValidationFail'] = $params['onValidationFail'];
+        } elseif (!is_null($this->onValidationFail)) {
+            $postfields['onValidationFail'] = $this->onValidationFail;
         }
 
         if (isset($params['tokenSSO'])) {
