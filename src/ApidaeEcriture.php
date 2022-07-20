@@ -371,7 +371,6 @@ class ApidaeEcriture extends ApidaeCore
             'id' => $idFiche,
             'donneesPrivees' => $descriptifsPrives
         ];
-        echo json_encode($donneesPrivees, JSON_PRETTY_PRINT) ;
 
         /* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
         $POSTFIELDS = ['donneesPrivees' => json_encode($donneesPrivees)];
