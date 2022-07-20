@@ -12,9 +12,10 @@ use PierreGranger\ApidaeCore;
 
 class ApidaeEcriture extends ApidaeCore
 {
-    public $skipValidation = false;
+    protected bool $skipValidation = false;
+    protected string $onValidationFail ;
 
-    public $statuts_api_ecriture = [
+    public const STATUS_API_ECRITURE = [
         'CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED',
         'MODIFICATION_VALIDATION_SKIPPED', 'MODIFICATION_VALIDATION_ASKED',
         'MODIFICATION_NO_DIFF',
@@ -22,7 +23,34 @@ class ApidaeEcriture extends ApidaeCore
         'NO_ACTION'
     ];
 
-    protected const MODES = ['CREATION', 'MODIFICATION', 'DEMANDE_SUPPRESSION'];
+    public const MODES = [
+        'CREATION', 'MODIFICATION', 'DEMANDE_SUPPRESSION',
+        'ANNULATION_DEMANDE', /** @since 0.6.0 */
+        'DEMANDE_MASQUAGE', /** @since 0.6.0 */
+        'MASQUAGE' /** @since 0.6.0 */
+    ];
+
+    public const ID_REQUIRED = [
+        'MODIFICATION','DEMANDE_SUPPRESSION',
+        'ANNULATION_DEMANDE', /** @since 0.6.0 */
+        'DEMANDE_MASQUAGE', /** @since 0.6.0 */
+        'MASQUAGE', /** @since 0.6.0 */
+    ] ;
+
+    public const ONVALIDATIONFAIL = ['ASK','CANCEL'] ;
+
+    public const ERRORTYPES = [
+        'ECRITURE_FORBIDDEN',
+        'ECRITURE_BAD_REQUEST',
+        'ECRITURE_INVALID_JSON_DATA',
+        'DEMANDE_SUPPRESSION_FAILED', /** @since 0.6.0 */
+        'DEMANDE_MASQUAGE_FAILED', /** @since 0.6.0 */
+        'MODIFICATION_VALIDATION_FAILED', /** @since 0.6.0 */
+        'CREATION_VALIDATION_FAILED', /** @since 0.6.0 */
+        'CANCEL_FAILED' /** @since 0.6.0 */
+    ] ;
+
+    public const FIELDS_REQUIRED = ['CREATION','MODIFICATION'] ;
 
     protected $_config;
 
@@ -59,6 +87,10 @@ class ApidaeEcriture extends ApidaeCore
         if (isset($params['skipValidation'])) {
             $this->skipValidation = $params['skipValidation'] ? true : false;
         }
+
+        if (isset($params['onValidationFail']) && in_array($params['onValidationFail'], self::ONVALIDATIONFAIL)) {
+            $this->onValidationFail = $params['onValidationFail'];
+        }
     }
 
     public function enregistrer($params = null): bool
@@ -78,7 +110,7 @@ class ApidaeEcriture extends ApidaeCore
         $postfields = [];
 
         $postfields['mode'] = $action;
-        if ($postfields['mode'] == 'MODIFICATION' || $postfields['mode'] == 'DEMANDE_SUPPRESSION') {
+        if (in_array($postfields['mode'], self::ID_REQUIRED)) {
             if (isset($params['idFiche'])) {
                 $postfields['id'] = $params['idFiche'];
             } elseif (isset($params['id'])) {
@@ -95,11 +127,17 @@ class ApidaeEcriture extends ApidaeCore
             $postfields['skipValidation'] = $this->skipValidation ? 'true' : 'false';
         }
 
+        if (isset($params['onValidationFail']) && in_array($params['onValidationFail'], self::ONVALIDATIONFAIL)) {
+            $postfields['onValidationFail'] = $params['onValidationFail'] ;
+        } elseif (in_array($this->onValidationFail, self::ONVALIDATIONFAIL)) {
+            $postfields['onValidationFail'] = $this->onValidationFail ;
+        }
+
         if (isset($params['tokenSSO'])) {
             $postfields['tokenSSO'] = $params['tokenSSO'];
         }
 
-        if ($postfields['mode'] != 'DEMANDE_SUPPRESSION') {
+        if (in_array($postfields['mode'], self::FIELDS_REQUIRED)) {
 
             /**
              * Le paramètre "type" est obligatoire pour la création (ne pas confondre avec root={"type":"EQUIPEMENT"})
@@ -224,41 +262,107 @@ class ApidaeEcriture extends ApidaeCore
         return true;
     }
 
+    /**
+     * @deprecated 0.5.1
+     */
     public function ajouter($params)
     {
-        // $fieldlist,$root,$medias=null,$clientId=null,$secret=null,$token=null
-        // $fieldlist,$root,$medias,$clientId,$secret,$action='CREATION',null,$token
+        return $this->creation($params) ;
+    }
+    /**
+     * @since 0.6.0
+     */
+    public function creation($params)
+    {
         $params['action'] = 'CREATION';
         return $this->enregistrer($params);
     }
 
+    /**
+     * @deprecated 0.5.1
+     */
     public function modifier($params)
     {
-        // $fieldlist,$root,$idFiche,$medias=null,$clientId=null,$secret=null,$token=null
-        // $fieldlist,$root,$medias,$clientId,$secret,$action='MODIFICATION',$idFiche,$token
+        return $this->modification($params) ;
+    }
+    /**
+     * @since 0.6.0
+     */
+    public function modification($params)
+    {
         $params['action'] = 'MODIFICATION';
         return $this->enregistrer($params);
     }
 
+    /**
+     * @since 0.6.0
+     */
+    public function annulationDemande($params)
+    {
+        $params['action'] = 'ANNULATION_DEMANDE';
+        return $this->enregistrer($params);
+    }
+
+    /**
+     * @deprecated 0.5.1
+     */
     public function supprimer($params)
     {
-        // $idFiche,$clientId=null,$secret=null,$token=null
-        // null,null,null,$clientId,$secret,$action='DEMANDE_SUPPRESSION',$idFiche,$token
+        return $this->demandeSuppression($params) ;
+    }
+
+    /**
+     * @since 0.6.0
+     */
+    public function demandeSuppression($params)
+    {
         $params['action'] = 'DEMANDE_SUPPRESSION';
         return $this->enregistrer($params);
     }
 
-    public function enregistrerDonneesPrivees($idFiche, $cle, $valeur, $lng = 'fr', $tokenSSO = null)
+    /**
+     * @since 0.6.0
+     */
+    public function masquage($params)
+    {
+        $params['action'] = 'MASQUAGE';
+        return $this->enregistrer($params);
+    }
+    
+    /**
+     * @since 0.6.0
+     */
+    public function demandeMasquage($params)
+    {
+        $params['action'] = 'DEMANDE_MASQUAGE';
+        return $this->enregistrer($params);
+    }
+
+    /**
+     * Undocumented function
+     *
+     * @param int $idFiche
+     * @param string $cle
+     * @param array<string> $valeurs ['fr' => 'Valeur FR', 'en' => 'Valeur EN']
+     * @param string $tokenSSO
+     * @return void
+     */
+    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
     {
         $donneesPrivees = ['objetsTouristiques' => []];
 
         /* Pour chaque objet touristique à modifer on peut avoir 1 ou plusieurs descriptifs privés à modifier. On va les stocker dans $descriptifsPrives. */
         $descriptifsPrives = [];
 
-        $descriptifsPrives[] = [
-            'nomTechnique' => $cle,
-            'descriptif' => [
-                'libelle' . ucfirst($lng) => $valeur
+        $descriptif = [] ;
+        foreach ($valeurs as $lng => $valeur) {
+            $descriptif['libelle'.ucfirst($lng)] = $valeur ;
+        }
+
+        $descriptifsPrives = [
+            [
+                'nomTechnique' => $cle,
+                'descriptif' => $descriptif
             ]
         ];
 
@@ -267,10 +371,12 @@ class ApidaeEcriture extends ApidaeCore
             'id' => $idFiche,
             'donneesPrivees' => $descriptifsPrives
         ];
+        echo json_encode($donneesPrivees, JSON_PRETTY_PRINT) ;
 
         /* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
         $POSTFIELDS = ['donneesPrivees' => json_encode($donneesPrivees)];
 
+        
         $access_token = $this->gimme_token();
 
         $requestData = [
