@@ -129,7 +129,7 @@ class ApidaeEcriture extends ApidaeCore
 
         if (isset($params['onValidationFail']) && in_array($params['onValidationFail'], self::ONVALIDATIONFAIL)) {
             $postfields['onValidationFail'] = $params['onValidationFail'] ;
-        } elseif (in_array($this->onValidationFail, self::ONVALIDATIONFAIL)) {
+        } elseif (isset($this->onValidationFail) && in_array($this->onValidationFail, self::ONVALIDATIONFAIL)) {
             $postfields['onValidationFail'] = $this->onValidationFail ;
         }
 
@@ -222,14 +222,18 @@ class ApidaeEcriture extends ApidaeCore
 
         $access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
 
-        $result = $this->request('/api/v002/ecriture/', [
+        $requestParams = [
             'token' => $access_token,
             'POSTFIELDS' => $postfields,
             'CUSTOMREQUEST' => 'PUT',
             'format' => 'json'
-        ]);
+        ] ;
 
-        $this->lastResult = $result;
+        if (isset($params['header']) && is_array($params['header'])) {
+            $requestParams['header'] = $params['header'] ;
+        }
+
+        $result = $this->request('/api/v002/ecriture/', $requestParams);
 
         if (isset($result['id'])) {
             if (preg_match('#^[0-9]+$#', $result['id'])) {
