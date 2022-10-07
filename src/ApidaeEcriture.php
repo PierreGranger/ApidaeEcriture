@@ -138,7 +138,6 @@ class ApidaeEcriture extends ApidaeCore
         }
 
         if (in_array($postfields['mode'], self::FIELDS_REQUIRED)) {
-
             /**
              * Le paramètre "type" est obligatoire pour la création (ne pas confondre avec root={"type":"EQUIPEMENT"})
              * Auparavant le paramètre était récupéré de root.type mais ce n'était pas techniquement très juste
@@ -332,7 +331,7 @@ class ApidaeEcriture extends ApidaeCore
         $params['action'] = 'MASQUAGE';
         return $this->enregistrer($params);
     }
-    
+
     /**
      * @since 0.6.0
      */
@@ -343,49 +342,61 @@ class ApidaeEcriture extends ApidaeCore
     }
 
     /**
-     * Undocumented function
+     * @see https://dev.apidae-tourisme.com/documentation-technique/v2/api-decriture/v002donnees-privees/
      *
+     * @param string $method PUT|DELETE
      * @param int $idFiche
      * @param string $cle
      * @param array<string> $valeurs ['fr' => 'Valeur FR', 'en' => 'Valeur EN']
      * @param string $tokenSSO
      * @return void
      */
-    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
+    public function donneesPrivees(string $method, int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
     {
+        if (!in_array($method, ['PUT', 'DELETE'])) {
+            throw new \Exception('bad method');
+        }
+
         $donneesPrivees = ['objetsTouristiques' => []];
 
         /* Pour chaque objet touristique à modifer on peut avoir 1 ou plusieurs descriptifs privés à modifier. On va les stocker dans $descriptifsPrives. */
         $descriptifsPrives = [];
 
         $descriptif = [] ;
-        foreach ($valeurs as $lng => $valeur) {
-            $descriptif['libelle'.ucfirst($lng)] = $valeur ;
+        if ($method == 'PUT') {
+            foreach ($valeurs as $lng => $valeur) {
+                $descriptif['libelle'.ucfirst($lng)] = $valeur ;
+            }
+
+            $descriptifsPrives = [
+                [
+                    'nomTechnique' => $cle,
+                    'descriptif' => $descriptif
+                ]
+            ];
+
+            /* Pour chaque objet à modifier on ajoute une entrée dans $donneesPrivees['objetsTouristiques'] */
+            $donneesPrivees['objetsTouristiques'][] = [
+                'id' => $idFiche,
+                'donneesPrivees' => $descriptifsPrives
+            ];
+        } elseif ($method == 'DELETE') {
+            $donneesPrivees['objetsTouristiques'][] = [
+                'id' => $idFiche,
+                'donneesPriveesASupprimer' => [$cle]
+            ];
         }
-
-        $descriptifsPrives = [
-            [
-                'nomTechnique' => $cle,
-                'descriptif' => $descriptif
-            ]
-        ];
-
-        /* Pour chaque objet à modifier on ajoute une entrée dans $donneesPrivees['objetsTouristiques'] */
-        $donneesPrivees['objetsTouristiques'][] = [
-            'id' => $idFiche,
-            'donneesPrivees' => $descriptifsPrives
-        ];
 
         /* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
         $POSTFIELDS = ['donneesPrivees' => json_encode($donneesPrivees)];
 
-        
+
         $access_token = $this->gimme_token();
 
         $requestData = [
             'token' => $access_token,
             'POSTFIELDS' => $POSTFIELDS,
-            'CUSTOMREQUEST' => 'PUT',
+            'CUSTOMREQUEST' => $method,
             'format' => 'json'
         ];
 
@@ -394,26 +405,37 @@ class ApidaeEcriture extends ApidaeCore
         }
 
         $result = $this->request('/api/v002/donnees-privees/', $requestData);
+        $lastResult = $this->lastResult() ;
 
         if (!isset($result['code'])) {
-            throw new \Exception('enregistrerDonneesPrivees : Unknown error');
+            throw new \Exception('Unknown error', $lastResult->code);
         }
 
         if ($result['code'] != 200) {
             if (isset($result['errorType'])) {
-                throw new \Exception('enregistrerDonneesPrivees : ' . $result['errorType'] . ' ' . @$result['message']);
+                throw new \Exception($result['errorType'] . ' ' . @$result['message'], $result['code']);
             }
             if (isset($result['message'])) {
-                throw new \Exception('enregistrerDonneesPrivees : ' . $result['message']);
+                throw new \Exception($result['message'], $result['code']);
             }
-            throw new \Exception('enregistrerDonneesPrivees : Unknown error (' . $result['code'] . ')');
+            throw new \Exception('Unknown error', $result['code']);
         }
 
-        if (isset($result['status']) && $result['status'] !== 'MODIFICATION_DONNEES_PRIVEES') {
-            return $result['status'] . ' - ' . $result['message'];
+        if (! isset($result['status']) || ! in_array($result['status'], ['MODIFICATION_DONNEES_PRIVEES','SUPPRESSION_DONNEES_PRIVEES'])) {
+            throw new \Exception('enregistrerDonneesPrivees : Unknown status (' . @$result['status'] . ')');
         }
 
         return true;
+    }
+
+    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
+    {
+        return $this->donneesPrivees('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
+    }
+
+    public function supprimerDonneesPrivees(int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
+    {
+        return $this->donneesPrivees('DELETE', $idFiche, $cle, $valeurs, $tokenSSO) ;
     }
 
     /**
