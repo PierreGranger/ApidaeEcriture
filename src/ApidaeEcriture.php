@@ -104,17 +104,21 @@ class ApidaeEcriture extends ApidaeCore
             throw new \Exception('enregistrer_params_not_array');
         }
 
-        if (!isset($params['action']) || !in_array($params['action'], self::MODES)) {
+        if (! isset($params['mode']) && isset($params['action'])) {
+            $params['mode'] = $params['action'] ;
+        }
+
+        if (!isset($params['mode']) || !in_array($params['mode'], self::MODES)) {
             throw new \Exception('enregistrer_action_null');
         }
-        if (!in_array($params['action'], self::MODES)) {
-            throw new \Exception(__METHOD__ . ' : Action ' . $params['action'] . ' invalide');
+        if (!in_array($params['mode'], self::MODES)) {
+            throw new \Exception(__METHOD__ . ' : Action ' . $params['mode'] . ' invalide');
         }
-        $action = $params['action'];
 
         $postfields = [];
+        
+        $postfields['mode'] = $params['mode'];
 
-        $postfields['mode'] = $action;
         if (in_array($postfields['mode'], self::ID_REQUIRED)) {
             if (isset($params['idFiche'])) {
                 $postfields['id'] = $params['idFiche'];
@@ -282,7 +286,7 @@ class ApidaeEcriture extends ApidaeCore
      */
     public function creation($params)
     {
-        $params['action'] = 'CREATION';
+        $params['mode'] = 'CREATION';
         return $this->enregistrer($params);
     }
 
@@ -298,7 +302,7 @@ class ApidaeEcriture extends ApidaeCore
      */
     public function modification($params)
     {
-        $params['action'] = 'MODIFICATION';
+        $params['mode'] = 'MODIFICATION';
         return $this->enregistrer($params);
     }
 
@@ -307,7 +311,7 @@ class ApidaeEcriture extends ApidaeCore
      */
     public function annulationDemande($params)
     {
-        $params['action'] = 'ANNULATION_DEMANDE';
+        $params['mode'] = 'ANNULATION_DEMANDE';
         return $this->enregistrer($params);
     }
 
@@ -324,7 +328,7 @@ class ApidaeEcriture extends ApidaeCore
      */
     public function demandeSuppression($params)
     {
-        $params['action'] = 'DEMANDE_SUPPRESSION';
+        $params['mode'] = 'DEMANDE_SUPPRESSION';
         return $this->enregistrer($params);
     }
 
@@ -333,7 +337,7 @@ class ApidaeEcriture extends ApidaeCore
      */
     public function masquage($params)
     {
-        $params['action'] = 'MASQUAGE';
+        $params['mode'] = 'MASQUAGE';
         return $this->enregistrer($params);
     }
 
@@ -342,7 +346,7 @@ class ApidaeEcriture extends ApidaeCore
      */
     public function demandeMasquage($params)
     {
-        $params['action'] = 'DEMANDE_MASQUAGE';
+        $params['mode'] = 'DEMANDE_MASQUAGE';
         return $this->enregistrer($params);
     }
 
