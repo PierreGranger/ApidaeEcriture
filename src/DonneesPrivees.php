@@ -12,9 +12,8 @@ trait DonneesPrivees
      * @param string $cle
      * @param array<string> $valeurs ['fr' => 'Valeur FR', 'en' => 'Valeur EN']
      * @param string $tokenSSO
-     * @return void
      */
-    public function descriptifsPrives(string $method, int $idFiche, string $cle, array|null $valeurs, string $tokenSSO = null)
+    public function descriptifsPrives(string $method, int $idFiche, string $cle, array|null $valeurs, ?string $tokenSSO=null) :bool
     {
         if (!in_array($method, ['PUT', 'DELETE'])) {
             throw new \Exception('bad method');
@@ -51,7 +50,56 @@ trait DonneesPrivees
         }
 
         /* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
-        $POSTFIELDS = ['donneesPrivees' => json_encode($donneesPrivees)];
+        return $this->doDonneesPrivees($method, $donneesPrivees, $tokenSSO) ;
+    }
+
+    public function donneesPrivees(string $method, array $payload, ?string $tokenSSO=null):bool
+    {
+        if (!in_array($method, ['PUT', 'DELETE'])) {
+            throw new \Exception('bad method');
+        }
+
+        if ( ! isset($payload['objetsTouristiques']) || ! is_array($payload['objetsTouristiques']) ) {
+            throw new \Exception('bad format for $donneesPrivees');
+        }
+
+        if ( $method == 'PUT' ) {
+            foreach ( $payload['objetsTouristiques'] as $objetTouristique ) {
+                if ( ! isset($objetTouristique['id']) || ! is_int($objetTouristique['id']) ) {
+                    throw new \Exception('bad format for $payload.objetsTouristiques.id');
+                }
+                if ( ! isset($objetTouristique['donneesPrivees']) || ! is_array($objetTouristique['donneesPrivees']) ) {
+                    throw new \Exception('bad format for $payload.objetsTouristiques.donneesPrivees');
+                }
+                foreach ( $objetTouristique['donneesPrivees'] as $donneePrivee ) {
+                    if ( ! isset($donneePrivee['nomTechnique']) || ! is_string($donneePrivee['nomTechnique']) ) {
+                        throw new \Exception('bad format for $payload.objetsTouristiques.donneesPrivees.nomTechnique');
+                    }
+                    if ( ! isset($donneePrivee['descriptif']) || ! is_array($donneePrivee['descriptif']) ) {
+                        throw new \Exception('bad format for $payload.objetsTouristiques.donneesPrivees.descriptif');
+                    }
+                }
+            }
+        }
+
+        if ( $method == 'DELETE' ) {
+            foreach ( $payload['objetsTouristiques'] as $objetTouristique ) {
+                if ( ! isset($objetTouristique['id']) || ! is_int($objetTouristique['id']) ) {
+                    throw new \Exception('bad format for $payload.objetsTouristiques.id');
+                }
+                if ( ! isset($objetTouristique['donneesPriveesASupprimer']) || ! is_array($objetTouristique['donneesPriveesASupprimer']) ) {
+                    throw new \Exception('bad format for $payload.objetsTouristiques.donneesPriveesASupprimer');
+                }
+                // Vérifier s'il s'agit d'un array de strings
+                foreach ( $objetTouristique['donneesPriveesASupprimer'] as $donneePriveeASupprimer ) {
+                    if ( ! is_string($donneePriveeASupprimer) ) {
+                        throw new \Exception('bad format for $payload.objetsTouristiques.donneesPriveesASupprimer');
+                    }
+                }
+            }
+        }
+
+        $POSTFIELDS = ['donneesPrivees' => json_encode($payload)];
 
 
         $access_token = $this->gimme_token();
@@ -94,11 +142,11 @@ trait DonneesPrivees
     /**
      * @deprecated 0.6.1
      */
-    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
+    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO=null)
     {
         return $this->descriptifsPrives('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
     }
-    public function putDescriptifsPrives(int $idFiche, string $cle, array $valeurs, string $tokenSSO = null)
+    public function putDescriptifsPrives(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO=null)
     {
         return $this->descriptifsPrives('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
     }
@@ -106,11 +154,11 @@ trait DonneesPrivees
     /**
      * @deprecated 0.6.1
      */
-    public function supprimerDonneesPrivees(int $idFiche, string $cle, string $tokenSSO = null)
+    public function supprimerDonneesPrivees(int $idFiche, string $cle, ?string $tokenSSO=null)
     {
         return $this->descriptifsPrives('DELETE', $idFiche, $cle, null, $tokenSSO) ;
     }
-    public function deleteDescriptifsPrives(int $idFiche, string $cle, string $tokenSSO = null)
+    public function deleteDescriptifsPrives(int $idFiche, string $cle, ?string $tokenSSO=null)
     {
         return $this->descriptifsPrives('DELETE', $idFiche, $cle, null, $tokenSSO) ;
     }
