@@ -3,7 +3,7 @@
     "description": "Classe de simplification pour l'écriture sur Apidae",
     "require": {
         "php": "^8.0",
-        "pierre-granger/apidae-core": "^0.6"
+        "pierre-granger/apidae-core": "^0.7"
     },
     "autoload": {
         "psr-4": {
