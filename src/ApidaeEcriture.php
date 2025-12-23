@@ -61,13 +61,11 @@ class ApidaeEcriture extends ApidaeCore
 
     public $last_id = null;
 
-    public string $projet_ecriture_clientId;
-    protected string $projet_ecriture_secret;
     public int $projet_ecriture_projectId;
 
     protected $lastAutorisation;
 
-    public function __construct(array $params = null)
+    public function __construct(?array $params)
     {
         parent::__construct($params);
 
