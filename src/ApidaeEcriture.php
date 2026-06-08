@@ -18,7 +18,7 @@ class ApidaeEcriture extends ApidaeCore
     use DonneesPrivees ;
 
     protected bool $skipValidation = false;
-    protected string $onValidationFail ;
+    protected ?string $onValidationFail = null;
 
     public const STATUS_API_ECRITURE = [
         'CREATION_VALIDATION_SKIPPED', 'CREATION_VALIDATION_ASKED',
@@ -57,13 +57,13 @@ class ApidaeEcriture extends ApidaeCore
 
     public const FIELDS_REQUIRED = ['CREATION','MODIFICATION'] ;
 
-    protected $_config;
+    public ?string $last_id = null;
 
-    public $last_id = null;
+    public string $projet_ecriture_clientId;
+    public string $projet_ecriture_secret;
+    public ?int $projet_ecriture_projectId = null;
 
-    public int $projet_ecriture_projectId;
-
-    protected $lastAutorisation;
+    protected ?string $lastAutorisation = null;
 
     public function __construct(?array $params)
     {
@@ -96,7 +96,7 @@ class ApidaeEcriture extends ApidaeCore
         }
     }
 
-    public function enregistrer($params = null): bool
+    public function enregistrer(?array $params = null): bool
     {
         if (!is_array($params)) {
             throw new \Exception('enregistrer_params_not_array');
@@ -275,14 +275,14 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @deprecated 0.5.1
      */
-    public function ajouter($params)
+    public function ajouter(array $params): bool
     {
         return $this->creation($params) ;
     }
     /**
      * @since 0.6.0
      */
-    public function creation($params)
+    public function creation(array $params): bool
     {
         $params['mode'] = 'CREATION';
         return $this->enregistrer($params);
@@ -291,14 +291,14 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @deprecated 0.5.1
      */
-    public function modifier($params)
+    public function modifier(array $params): bool
     {
         return $this->modification($params) ;
     }
     /**
      * @since 0.6.0
      */
-    public function modification($params)
+    public function modification(array $params): bool
     {
         $params['mode'] = 'MODIFICATION';
         return $this->enregistrer($params);
@@ -307,7 +307,7 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @since 0.6.0
      */
-    public function annulationDemande($params)
+    public function annulationDemande(array $params): bool
     {
         $params['mode'] = 'ANNULATION_DEMANDE';
         return $this->enregistrer($params);
@@ -316,7 +316,7 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @deprecated 0.5.1
      */
-    public function supprimer($params)
+    public function supprimer(array $params): bool
     {
         return $this->demandeSuppression($params) ;
     }
@@ -324,7 +324,7 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @since 0.6.0
      */
-    public function demandeSuppression($params)
+    public function demandeSuppression(array $params): bool
     {
         $params['mode'] = 'DEMANDE_SUPPRESSION';
         return $this->enregistrer($params);
@@ -333,7 +333,7 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @since 0.6.0
      */
-    public function masquage($params)
+    public function masquage(array $params): bool
     {
         $params['mode'] = 'MASQUAGE';
         return $this->enregistrer($params);
@@ -342,7 +342,7 @@ class ApidaeEcriture extends ApidaeCore
     /**
      * @since 0.6.0
      */
-    public function demandeMasquage($params)
+    public function demandeMasquage(array $params): bool
     {
         $params['mode'] = 'DEMANDE_MASQUAGE';
         return $this->enregistrer($params);
@@ -354,10 +354,10 @@ class ApidaeEcriture extends ApidaeCore
      * La recherche par tokenSSO permet de savoir si l'utilisateur authentifié (par son tokenSSO) pourra être désigné comme auteur des modifications
      *
      * @param int $id_offre Identifiant de l'offre sur laquelle vous souhaitez écrire
-     * @param string $tokenSSO Token SSO d'une personne identifiée (optionnel)
+     * @param string|null $tokenSSO Token SSO d'une personne identifiée (optionnel)
      * @return	bool
      */
-    public function autorisation(int $id_offre, string $tokenSSO = null)
+    public function autorisation(int $id_offre, ?string $tokenSSO = null): bool
     {
         $params = [
             'token' => $this->gimme_token(),
@@ -384,14 +384,14 @@ class ApidaeEcriture extends ApidaeCore
         return false;
     }
 
-    public function lastAutorisationDetail()
+    public function lastAutorisationDetail(): ?string
     {
         return $this->lastAutorisation;
     }
 
     // http://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/cas-particulier-des-multimedias
     // Méthode empruntée de https://github.com/guzzle/guzzle/blob/3a0787217e6c0246b457e637ddd33332efea1d2a/src/Guzzle/Http/Message/PostFile.php#L90
-    public function getCurlValue($filePath, $contentType, $fileName)
+    public function getCurlValue(string $filePath, ?string $contentType, string $fileName): \CURLFile|string
     {
         // Disponible seulement en PHP >= 5.5
         if (function_exists('curl_file_create')) {

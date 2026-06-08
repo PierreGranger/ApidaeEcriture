@@ -2,6 +2,10 @@
 
 namespace PierreGranger;
 
+/**
+ * @property string $projet_ecriture_clientId
+ * @property string $projet_ecriture_secret
+ */
 trait DonneesPrivees
 {
     /**
@@ -50,7 +54,7 @@ trait DonneesPrivees
         }
 
         /* On a construit notre tableau en php : on l'encode en json pour l'envoyer à l'API. */
-        return $this->doDonneesPrivees($method, $donneesPrivees, $tokenSSO) ;
+        return $this->donneesPrivees($method, $donneesPrivees, $tokenSSO) ;
     }
 
     public function donneesPrivees(string $method, array $payload, ?string $tokenSSO=null):bool
@@ -142,11 +146,11 @@ trait DonneesPrivees
     /**
      * @deprecated 0.6.1
      */
-    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO=null)
+    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO = null): bool
     {
         return $this->descriptifsPrives('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
     }
-    public function putDescriptifsPrives(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO=null)
+    public function putDescriptifsPrives(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO = null): bool
     {
         return $this->descriptifsPrives('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
     }
@@ -154,11 +158,11 @@ trait DonneesPrivees
     /**
      * @deprecated 0.6.1
      */
-    public function supprimerDonneesPrivees(int $idFiche, string $cle, ?string $tokenSSO=null)
+    public function supprimerDonneesPrivees(int $idFiche, string $cle, ?string $tokenSSO = null): bool
     {
         return $this->descriptifsPrives('DELETE', $idFiche, $cle, null, $tokenSSO) ;
     }
-    public function deleteDescriptifsPrives(int $idFiche, string $cle, ?string $tokenSSO=null)
+    public function deleteDescriptifsPrives(int $idFiche, string $cle, ?string $tokenSSO = null): bool
     {
         return $this->descriptifsPrives('DELETE', $idFiche, $cle, null, $tokenSSO) ;
     }

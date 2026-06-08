@@ -10,16 +10,16 @@ namespace PierreGranger;
 
 trait Collaborateurs
 {
-    public function putCollaborateurs($id, $membresCollaborateurs, $tokenSSO=null)
+    public function putCollaborateurs(int $id, array $membresCollaborateurs, ?string $tokenSSO = null): bool
     {
         return $this->collaborateurs('PUT', $id, $membresCollaborateurs, $tokenSSO) ;
     }
-    public function deleteCollaborateurs($id, $membresCollaborateurs, $tokenSSO=null)
+    public function deleteCollaborateurs(int $id, array $membresCollaborateurs, ?string $tokenSSO = null): bool
     {
         return $this->collaborateurs('DELETE', $id, $membresCollaborateurs, $tokenSSO) ;
     }
 
-    private function collaborateurs($method, $id, $membresCollaborateurs, $tokenSSO)
+    private function collaborateurs(string $method, int $id, array $membresCollaborateurs, ?string $tokenSSO): bool
     {
         if (!in_array($method, ['GET', 'POST', 'PUT', 'DELETE'])) {
             throw new \Exception('bad method');

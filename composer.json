@@ -2,8 +2,8 @@
     "name": "pierre-granger/apidae-ecriture",
     "description": "Classe de simplification pour l'écriture sur Apidae",
     "require": {
-        "php": "^8.0",
-        "pierre-granger/apidae-core": "^0.7"
+        "php": "^8.4",
+        "pierre-granger/apidae-core": "^0.8"
     },
     "autoload": {
         "psr-4": {
