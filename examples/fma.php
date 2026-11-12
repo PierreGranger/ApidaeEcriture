@@ -9,7 +9,8 @@ $apidaeEcriture = new \PierreGranger\ApidaeEcriture(array_merge(
 	$configApidaeEcriture,
 	array(
 		'debug' => true,
-		'type_prod' => 'prod',
+		// Cet exemple crée réellement une offre : ne jamais le lancer en prod.
+		'env' => 'cooking',
 		'skipValidation' => true,
 	)
 ));

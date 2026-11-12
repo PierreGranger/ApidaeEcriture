@@ -26,11 +26,11 @@ if (isset($configApidaeSso) && $configApidaeSso['ssoSecret'] != '') {
         try {
             $ApidaeSso->getSsoToken($_GET['code']);
         } catch (Exception $e) {
-            echo $e;
+            echo htmlspecialchars($e->getMessage());
         }
     }
 
-    if (!$ApidaeSso->connected()) echo '<a href="' . $ApidaeSso->getSsoUrl() . '">SSO Prod</a>';
+    if (!$ApidaeSso->connected()) echo '<a href="' . htmlspecialchars($ApidaeSso->getSsoUrl(), ENT_QUOTES) . '">SSO Prod</a>';
     else {
         $sep = "\n";
 
@@ -59,7 +59,7 @@ if (isset($configApidaeSso) && $configApidaeSso['ssoSecret'] != '') {
 
         foreach ($tests as $id_offre => $desc) {
             echo $sep . $id_offre . ' => ' . $desc . $sep;
-            echo 'Autorisation pour ' . $profile['firstName'] . ' ' . $profile['lastName'] . ' ? ' . ($apidaeEcriture->autorisation($id_offre, $_SESSION['ApidaeSso']['sso']['access_token']) ? 'Oui' : 'Non') . $sep;
+            echo 'Autorisation pour ' . htmlspecialchars($profile['firstName'] . ' ' . $profile['lastName']) . ' ? ' . ($apidaeEcriture->autorisation($id_offre, $_SESSION['ApidaeSso']['sso']['access_token']) ? 'Oui' : 'Non') . $sep;
             echo 'Détail : ' . $apidaeEcriture->lastAutorisationDetail() . $sep;
         }
     }
@@ -74,7 +74,12 @@ if (isset($configApidaeSso) && $configApidaeSso['ssoSecret'] != '') {
 if (isset($configApidaeSsoPreprod) && $configApidaeSsoPreprod['ssoSecret'] != '' && isset($configApidaeEcriturePreprod)) {
 
     echo $sep . '<hr />Preprod' . $sep;
-    $ssoRedirectUrl = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . '?' . http_build_query(['type' => 'preprod']);
+    // Ne pas construire l'URL de retour SSO depuis HTTP_HOST / REQUEST_URI (injection d'en-tête Host, XSS) :
+    // elle doit être fixe et déclarée dans la configuration.
+    $ssoRedirectUrl = $configApidaeSsoPreprod['defaultSsoRedirectUrl'] ?? null;
+    if ($ssoRedirectUrl === null) {
+        exit('defaultSsoRedirectUrl manquant dans $configApidaeSsoPreprod');
+    }
 
     $ApidaeSsoPreprod = new ApidaeSso(
         array_merge(
@@ -86,15 +91,14 @@ if (isset($configApidaeSsoPreprod) && $configApidaeSsoPreprod['ssoSecret'] != ''
     if (isset($_GET['logout'])) $ApidaeSsoPreprod->logout();
 
     if (isset($_GET['code']) && isset($_GET['type']) && $_GET['type'] == 'preprod' && !$ApidaeSsoPreprod->connected()) {
-        echo __LINE__;
         try {
             $ApidaeSsoPreprod->getSsoToken($_GET['code']);
         } catch (Exception $e) {
-            echo $e;
+            echo htmlspecialchars($e->getMessage());
         }
     }
 
-    if (!$ApidaeSsoPreprod->connected()) echo '<a href="' . $ApidaeSsoPreprod->getSsoUrl($ssoRedirectUrl) . '">SSO PreProd</a>';
+    if (!$ApidaeSsoPreprod->connected()) echo '<a href="' . htmlspecialchars($ApidaeSsoPreprod->getSsoUrl($ssoRedirectUrl), ENT_QUOTES) . '">SSO PreProd</a>';
     else {
 
         $profile = $ApidaeSsoPreprod->getUserProfile(true);
@@ -119,7 +123,7 @@ if (isset($configApidaeSsoPreprod) && $configApidaeSsoPreprod['ssoSecret'] != ''
 
         foreach ($tests as $id_offre => $desc) {
             echo $sep . $id_offre . ' => ' . $desc . $sep;
-            echo 'Autorisation pour ' . $profile['firstName'] . ' ' . $profile['lastName'] . ' ? ' . ($apidaeEcriture->autorisation($id_offre, $_SESSION['ApidaeSsoPreprod']['sso']['access_token']) ? 'Oui' : 'Non') . $sep;
+            echo 'Autorisation pour ' . htmlspecialchars($profile['firstName'] . ' ' . $profile['lastName']) . ' ? ' . ($apidaeEcriture->autorisation($id_offre, $_SESSION['ApidaeSsoPreprod']['sso']['access_token']) ? 'Oui' : 'Non') . $sep;
             echo 'Détail : ' . $apidaeEcriture->lastAutorisationDetail() . $sep;
         }
     }

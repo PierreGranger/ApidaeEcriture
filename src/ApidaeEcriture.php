@@ -3,20 +3,25 @@
 namespace PierreGranger;
 
 use PierreGranger\ApidaeCore;
-use PierreGranger\Collaborateurs;
-use PierreGranger\DonneesPrivees;
+use PierreGranger\Ecriture\ApidaeClient;
+use PierreGranger\Ecriture\ClosureClient;
+use PierreGranger\Ecriture\CollaborateursService;
+use PierreGranger\Ecriture\CriteresInternesService;
+use PierreGranger\Ecriture\DonneesPriveesService;
+use PierreGranger\Ecriture\EcritureService;
 
 /**
+ * Façade historique de l'API d'écriture Apidae.
+ *
+ * La logique est portée par des services autonomes (PierreGranger\Ecriture\*) qui ne dépendent que de
+ * l'interface ApidaeClient. Cette classe hérite toujours de ApidaeCore pour la compatibilité
+ * (alerte(), setTimeout(), lastResult()… sont utilisés par les projets existants) et se contente de
+ * déléguer aux services.
  *
  * @author  Pierre Granger <pierre@pierre-granger.fr>
- *
  */
-
 class ApidaeEcriture extends ApidaeCore
 {
-    use Collaborateurs ;
-    use DonneesPrivees ;
-
     protected bool $skipValidation = false;
     protected ?string $onValidationFail = null;
 
@@ -57,13 +62,18 @@ class ApidaeEcriture extends ApidaeCore
 
     public const FIELDS_REQUIRED = ['CREATION','MODIFICATION'] ;
 
+    /**
+     * Identifiant renvoyé par le dernier appel à enregistrer() (null si l'appel a échoué ou n'a pas renvoyé d'id).
+     */
     public ?string $last_id = null;
 
-    public string $projet_ecriture_clientId;
-    public string $projet_ecriture_secret;
+    // projet_ecriture_clientId (public) et projet_ecriture_secret (protected) sont déclarés dans ApidaeCore :
+    // ils ne sont plus redéclarés ici, ce qui rendait le secret public.
     public ?int $projet_ecriture_projectId = null;
 
     protected ?string $lastAutorisation = null;
+
+    private ?ApidaeClient $client = null;
 
     public function __construct(?array $params)
     {
@@ -88,186 +98,49 @@ class ApidaeEcriture extends ApidaeCore
         }
 
         if (isset($params['skipValidation'])) {
-            $this->skipValidation = $params['skipValidation'] ? true : false;
+            $this->skipValidation = (bool) $params['skipValidation'];
         }
 
-        if (isset($params['onValidationFail']) && in_array($params['onValidationFail'], self::ONVALIDATIONFAIL)) {
+        if (isset($params['onValidationFail']) && in_array($params['onValidationFail'], self::ONVALIDATIONFAIL, true)) {
             $this->onValidationFail = $params['onValidationFail'];
         }
     }
 
+    /**
+     * Client authentifié avec le token du projet d'écriture, passé aux services.
+     * Les closures appellent $this->request() : une sous-classe qui surcharge request() reste prise en compte.
+     */
+    protected function client(): ApidaeClient
+    {
+        return $this->client ??= new ClosureClient(
+            fn (string $path, array $params): array => $this->request($path, $params),
+            fn (): string => $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret),
+            fn () => $this->forgetToken($this->projet_ecriture_clientId),
+        );
+    }
+
+    protected function ecritureService(): EcritureService
+    {
+        return new EcritureService($this->client(), $this->skipValidation, $this->onValidationFail);
+    }
+
+    /**
+     * @param array<string, mixed>|null $params mode, id|idFiche, type, root, fieldList, aspect.XY.root, medias, tokenSSO, skipValidation…
+     * @throws ApidaeException si l'API renvoie une erreur (errorType ou code HTTP hors 2xx)
+     */
     public function enregistrer(?array $params = null): bool
     {
         if (!is_array($params)) {
             throw new \Exception('enregistrer_params_not_array');
         }
 
-        if (! isset($params['mode']) && isset($params['action'])) {
-            $params['mode'] = $params['action'] ;
-        }
+        $this->last_id = null;
 
-        if (!isset($params['mode']) || !in_array($params['mode'], self::MODES)) {
-            throw new \Exception('enregistrer_action_null');
-        }
-        if (!in_array($params['mode'], self::MODES)) {
-            throw new \Exception(__METHOD__ . ' : Action ' . $params['mode'] . ' invalide');
-        }
-
-        $postfields = [];
-        
-        $postfields['mode'] = $params['mode'];
-
-        if (in_array($postfields['mode'], self::ID_REQUIRED)) {
-            if (isset($params['idFiche'])) {
-                $postfields['id'] = $params['idFiche'];
-            } elseif (isset($params['id'])) {
-                $postfields['id'] = $params['id'];
-            } else {
-                throw new \Exception(__METHOD__ . ' : Identifiant de fiche non trouvé (id, idFiche ?)');
-            }
-        }
-
-        // skipValidation doit être un string
-        if (isset($params['skipValidation'])) {
-            $postfields['skipValidation'] = $params['skipValidation'] ? 'true' : 'false';
-        } else {
-            $postfields['skipValidation'] = $this->skipValidation ? 'true' : 'false';
-        }
-
-        if (isset($params['onValidationFail']) && in_array($params['onValidationFail'], self::ONVALIDATIONFAIL)) {
-            $postfields['onValidationFail'] = $params['onValidationFail'] ;
-        } elseif (isset($this->onValidationFail) && in_array($this->onValidationFail, self::ONVALIDATIONFAIL)) {
-            $postfields['onValidationFail'] = $this->onValidationFail ;
-        }
-
-        if (isset($params['tokenSSO'])) {
-            $postfields['tokenSSO'] = $params['tokenSSO'];
-        }
-
-        if (in_array($postfields['mode'], self::FIELDS_REQUIRED)) {
-            /**
-             * Le paramètre "type" est obligatoire pour la création (ne pas confondre avec root={"type":"EQUIPEMENT"})
-             * Auparavant le paramètre était récupéré de root.type mais ce n'était pas techniquement très juste
-             */
-            if ($postfields['mode'] == 'CREATION') {
-                if (isset($params['type'])) {
-                    $postfields['type'] = $params['type'];
-                }
-                // Rétro compatibilité
-                elseif (isset($params['root']['type'])) {
-                    $postfields['type'] = $params['root']['type'];
-                } else {
-                    throw new \Exception('Le paramètre "type" est obligatoire pour la CREATION');
-                }
-            }
-
-            if (isset($params['proprietaireId']) && !empty($params['proprietaireId'])) {
-                $postfields['proprietaireId'] = $params['proprietaireId'];
-            }
-
-            if (isset($params['medias']) && is_array($params['medias'])) {
-                foreach ($params['medias'] as $k_media => $media) {
-                    $postfields[$k_media] = $media;
-                }
-            }
-
-            $fields = [];
-
-            /*
-                Traitement des données root, root.fieldList
-            */
-            if (isset($params['root'])) {
-                $postfields['root'] = $params['root'];
-                $fields[] = 'root';
-            }
-            if (isset($params['fieldlist'])) {
-                $postfields['root.fieldList'] = $params['fieldlist'];
-            } elseif (isset($params['fieldList'])) {
-                $postfields['root.fieldList'] = $params['fieldList'];
-            } elseif (isset($params['root.fieldlist'])) {
-                $postfields['root.fieldList'] = $params['root.fieldlist'];
-            } elseif (isset($params['root.fieldList'])) {
-                $postfields['root.fieldList'] = $params['root.fieldList'];
-            }
-
-
-            /*
-                Traitement des données aspect.XY.root, aspect.XY.root.fieldList
-            */
-            foreach ($params as $param_key => $param_value) {
-                if (preg_match('#^aspect\.([0-9a-zA-Z-_]+)\.root$#', $param_key, $match)) {
-                    $fields[] = $param_key;
-                    $postfields[$param_key] = $param_value;
-
-                    if (isset($params[$param_key . '.fieldList'])) {
-                        $postfields[$param_key . '.fieldList'] = $params[$param_key . '.fieldList'];
-                    }
-                    if (isset($params[$param_key . '.removeAspectFields'])) {
-                        $postfields[$param_key . '.removeAspectFields'] = $params[$param_key . '.removeAspectFields'];
-                    }
-                }
-            }
-
-
-            $postfields['fields'] = $fields;
-        }
-
-        foreach ($postfields as $k => $v) {
-            if (preg_match('#(fields|fieldList|removeAspectFields)$#', $k)) {
-                $postfields[$k] = json_encode($v);
-            } elseif (preg_match('#root$#', $k)) {
-                if (is_array($v) && sizeof($v) == 0) {
-                    $postfields[$k] = "{}";
-                } else {
-                    $postfields[$k] = json_encode($v);
-                }
-            }
-        }
-
-        $this->lastPostfields = $postfields;
-
-        $access_token = $this->gimme_token($this->projet_ecriture_clientId, $this->projet_ecriture_secret);
-
-        $requestParams = [
-            'token' => $access_token,
-            'POSTFIELDS' => $postfields,
-            'CUSTOMREQUEST' => 'PUT',
-            'format' => 'json'
-        ] ;
-
-        if (isset($params['header']) && is_array($params['header'])) {
-            $requestParams['header'] = $params['header'] ;
-        }
-
-        $result = $this->request('/api/v002/ecriture/', $requestParams);
+        $result = $this->ecritureService()->enregistrer($params);
 
         if (isset($result['id'])) {
-            if (preg_match('#^[0-9]+$#', $result['id'])) {
-                $this->last_id = $result['id'];
-            } else {
-                throw new \Exception('Lastid is not a number');
-            }
+            $this->last_id = (string) $result['id'];
         }
-
-        if (isset($result['errorType'])) {
-            throw new ApidaeException('ecriture_error', ApidaeException::INVALID_PARAMETER, $result);
-        }
-
-        /*
-            Exemple d'erreur reçue : diffile de découper ça pour en récupérer une info lisible.
-            Pas grand chose d'autre à faire que d'afficher l'erreur "brute".
-
-            Erreur lors du traitement des données pour le paramètre 'root'. Cause: Unrecognized field "0"
-                (class com.rhonealpestourisme.sitra.core.common.business.objettouristique.common.model.ouverture.PeriodeOuverture),
-                not marked as ignorable
-                    (14 known properties: "complementHoraire", "ouverturesJourDuMois", "tousLesAns", "identifiant", "nom", "ouverturesJournalieres", "dateDebut", "horaireFermeture", "type", "dateFin", "identifiantTechnique", "horaireOuverture", "ouverturesExceptionnelles", "identifiantTemporaire"])
-                at [Source: {"type":"FETE_ET_MANIFESTATION","nom":{"libelleFr":"FMA TEST ApidaeEcriture 02\/03\/2021"},"localisation":{"adresse":{"adresse1":"Adresse 1","adresse2":"Adresse 2","adresse3":"Adresse 3","codePostal":"03400","commune":{"id":1555}}},"informationsFeteEtManifestation":{"portee":{"elementReferenceType":"FeteEtManifestationPortee","id":2354}},"contacts":[{"referent":true,"nom":"Nom contact 1","prenom":"Pr\u00e9nom contact 1","moyensCommunication":[{"type":{"id":204,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"contact1@mail.fr"}},{"type":{"id":201,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"01 02 03 04 05"}}]},{"nom":"Nom contact 2","prenom":"Pr\u00e9nom contact 2","moyensCommunication":[{"type":{"id":204,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"contact2@mail.fr"}},{"type":{"id":201,"elementReferenceType":"MoyenCommunicationType"},"coordonnees":{"fr":"06 07 08 09 10"}}]}],"ouverture":{"periodesOuvertures":[{"dateDebut":"2021-03-02","dateFin":"2021-03-02","0":1614794098,"horaireOuverture":"11:00:00","horaireFermeture":"12:00:00","tousLesAns":false,"type":"OUVERTURE_SAUF"},{"dateDebut":"2021-03-09","dateFin":"2021-04-02","horaireOuverture":"16:00:00","horaireFermeture":"17:00:00","tousLesAns":false,"type":"OUVERTURE_SAUF"}]},"illustrations":[{"link":false,"type":"IMAGE","nom":{"libelleFr":"L\u00e9gende image 1"},"copyright":{"libelleFr":"Copyright image 1"},"traductionFichiers":[{"locale":"fr","url":"MULTIMEDIA#illustration-1"}]}]};
-                 line: 1, column: 1058]
-                 (through reference chain: com.rhonealpestourisme.sitra.core.common.api.business.objettouristique.model.FeteEtManifestationBean["ouverture"]->
-                 com.rhonealpestourisme.sitra.core.common.business.objettouristique.common.model.ouverture.Ouverture["periodesOuvertures"]->java.util.HashSet[0]->
-                 com.rhonealpestourisme.sitra.core.common.business.objettouristique.common.model.ouverture.PeriodeOuverture["0"])
-
-            */
 
         return true;
     }
@@ -355,33 +228,11 @@ class ApidaeEcriture extends ApidaeCore
      *
      * @param int $id_offre Identifiant de l'offre sur laquelle vous souhaitez écrire
      * @param string|null $tokenSSO Token SSO d'une personne identifiée (optionnel)
-     * @return	bool
      */
     public function autorisation(int $id_offre, ?string $tokenSSO = null): bool
     {
-        $params = [
-            'token' => $this->gimme_token(),
-            'CUSTOMREQUEST' => 'GET'
-        ];
-        if ($tokenSSO != null) {
-            $params['POSTFIELDS'] = http_build_query(['tokenSSO' => $tokenSSO]);
-        }
-        $result = $this->request('/api/v002/autorisation/objet-touristique/modification/' . $id_offre, $params);
-
-        if (is_array($result) && isset($result['code'])) {
-            if ($result['code'] != 200) {
-                $this->lastAutorisation = 'HTTPCODE_' . $result['code'];
-                return false;
-            }
-            if (isset($result['body'])) {
-                $result['body'] = preg_replace('#"#', '', $result['body']);
-            }
-
-            $this->lastAutorisation = $result['body'];
-            return $result['body'] == 'MODIFICATION_POSSIBLE';
-        }
-        $this->lastAutorisation = 'NO_HTTPCODE_RETURNED';
-        return false;
+        $this->lastAutorisation = $this->ecritureService()->autorisation($id_offre, $tokenSSO);
+        return $this->lastAutorisation === 'MODIFICATION_POSSIBLE';
     }
 
     public function lastAutorisationDetail(): ?string
@@ -389,21 +240,104 @@ class ApidaeEcriture extends ApidaeCore
         return $this->lastAutorisation;
     }
 
-    // http://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/cas-particulier-des-multimedias
-    // Méthode empruntée de https://github.com/guzzle/guzzle/blob/3a0787217e6c0246b457e637ddd33332efea1d2a/src/Guzzle/Http/Message/PostFile.php#L90
-    public function getCurlValue(string $filePath, ?string $contentType, string $fileName): \CURLFile|string
+    /**
+     * Prépare un fichier à envoyer dans $params['medias'] (clé multimedia.<identifiant>).
+     *
+     * @see https://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/cas-particulier-des-multimedias
+     */
+    public function getCurlValue(string $filePath, ?string $contentType, string $fileName): \CURLFile
     {
-        // Disponible seulement en PHP >= 5.5
-        if (function_exists('curl_file_create')) {
-            return curl_file_create($filePath, $contentType, $fileName);
+        if (!is_file($filePath) || !is_readable($filePath)) {
+            throw new \Exception(__METHOD__ . ' : fichier introuvable ou illisible');
         }
 
-        // Version compatible PHP < 5.5
-        $value = "@{$filePath};filename=" . $fileName;
-        if ($contentType) {
-            $value .= ';type=' . $contentType;
+        return new \CURLFile($filePath, $contentType, $fileName);
+    }
+
+    /*
+     * Collaborateurs
+     */
+
+    public function putCollaborateurs(int $id, array $membresCollaborateurs, ?string $tokenSSO = null): bool
+    {
+        (new CollaborateursService($this->client()))->collaborateurs('PUT', $id, $membresCollaborateurs, $tokenSSO);
+        return true;
+    }
+
+    public function deleteCollaborateurs(int $id, array $membresCollaborateurs, ?string $tokenSSO = null): bool
+    {
+        (new CollaborateursService($this->client()))->collaborateurs('DELETE', $id, $membresCollaborateurs, $tokenSSO);
+        return true;
+    }
+
+    /*
+     * Données privées
+     */
+
+    /**
+     * @see https://dev.apidae-tourisme.com/documentation-technique/v2/api-decriture/v002donnees-privees/
+     *
+     * @param string $method PUT|DELETE
+     * @param array<string, string>|null $valeurs ['fr' => 'Valeur FR', 'en' => 'Valeur EN']
+     */
+    public function descriptifsPrives(string $method, int $idFiche, string $cle, ?array $valeurs, ?string $tokenSSO = null): bool
+    {
+        (new DonneesPriveesService($this->client()))->descriptifsPrives($method, $idFiche, $cle, $valeurs, $tokenSSO);
+        return true;
+    }
+
+    /**
+     * @param string $method PUT|DELETE
+     * @param array<string, mixed> $payload ['objetsTouristiques' => [...]]
+     */
+    public function donneesPrivees(string $method, array $payload, ?string $tokenSSO = null): bool
+    {
+        (new DonneesPriveesService($this->client()))->donneesPrivees($method, $payload, $tokenSSO);
+        return true;
+    }
+
+    /**
+     * @deprecated 0.6.1
+     */
+    public function enregistrerDonneesPrivees(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO = null): bool
+    {
+        return $this->descriptifsPrives('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
+    }
+    public function putDescriptifsPrives(int $idFiche, string $cle, array $valeurs, ?string $tokenSSO = null): bool
+    {
+        return $this->descriptifsPrives('PUT', $idFiche, $cle, $valeurs, $tokenSSO) ;
+    }
+
+    /**
+     * @deprecated 0.6.1
+     */
+    public function supprimerDonneesPrivees(int $idFiche, string $cle, ?string $tokenSSO = null): bool
+    {
+        return $this->descriptifsPrives('DELETE', $idFiche, $cle, null, $tokenSSO) ;
+    }
+    public function deleteDescriptifsPrives(int $idFiche, string $cle, ?string $tokenSSO = null): bool
+    {
+        return $this->descriptifsPrives('DELETE', $idFiche, $cle, null, $tokenSSO) ;
+    }
+
+    /*
+     * Critères internes
+     */
+
+    /**
+     * @see https://dev.apidae-tourisme.com/fr/documentation-technique/v2/api-decriture/v002criteres-internes
+     *
+     * Renvoie seulement true ou false :
+     * les erreurs sont à traiter en récupérant les exception ou en analysant le contenu de ApidaeEcriture::lastResult() si le retour est false.
+     */
+    public function critereInterne(string $method, array $id_offres, array $id_criteres): bool
+    {
+        $ret = (new CriteresInternesService($this->client()))->critereInterne($method, $id_offres, $id_criteres);
+
+        if ($ret['warning'] !== null && is_array($this->lastResult)) {
+            $this->lastResult['warning'] = $ret['warning'];
         }
 
-        return $value;
+        return $ret['ok'];
     }
 }
